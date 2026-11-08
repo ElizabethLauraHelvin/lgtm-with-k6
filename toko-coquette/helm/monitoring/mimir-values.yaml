@@ -1,4 +1,3 @@
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,7 +9,7 @@ data:
 
     server:
       http_listen_port: 9009
-      log_level: info
+      log_level: warn
 
     blocks_storage:
       backend: filesystem
@@ -21,41 +20,33 @@ data:
       tsdb:
         dir: /data/tsdb
 
+    distributor:
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+
+    ingester:
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: memberlist
+        replication_factor: 1
+
     compactor:
       data_dir: /data/compactor
       sharding_ring:
         kvstore:
-          store: inmemory
-
-    distributor:
-      ring:
-        kvstore:
-          store: inmemory
-
-    ingester:
-      ring:
-        kvstore:
-          store: inmemory
-        replication_factor: 1
+          store: memberlist
 
     store_gateway:
       sharding_ring:
-        kvstore:
-          store: inmemory
         replication_factor: 1
 
     ruler_storage:
       backend: filesystem
       filesystem:
         dir: /data/ruler
-
-    alertmanager:
-      data_dir: /data/alertmanager
-
-    alertmanager_storage:
-      backend: filesystem
-      filesystem:
-        dir: /data/alertmanager-storage
 
 ---
 apiVersion: v1
@@ -69,7 +60,7 @@ spec:
   storageClassName: local-path
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi
 
 ---
 apiVersion: apps/v1
@@ -97,14 +88,13 @@ spec:
           ports:
             - name: http
               containerPort: 9009
-              protocol: TCP
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 500m
+              memory: 1Gi
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 2Gi
           volumeMounts:
             - name: config
               mountPath: /etc/mimir
@@ -114,14 +104,14 @@ spec:
             httpGet:
               path: /ready
               port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 15
           livenessProbe:
             httpGet:
               path: /ready
               port: http
-            initialDelaySeconds: 60
-            periodSeconds: 20
+            initialDelaySeconds: 90
+            periodSeconds: 30
       volumes:
         - name: config
           configMap:
@@ -144,4 +134,3 @@ spec:
     - name: http
       port: 9009
       targetPort: 9009
-      protocol: TCP
