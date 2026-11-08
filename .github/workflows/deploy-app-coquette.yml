@@ -8,6 +8,8 @@ on:
     paths:
       - 'toko-coquette/backend/**'
       - 'toko-coquette/frontend/**'
+      - 'toko-coquette/infrastructure/nginx/**'
+      - 'toko-coquette/k3d/**'
 
   workflow_dispatch:
 
@@ -199,8 +201,49 @@ jobs:
           echo "===== IMAGES ====="
           kubectl get deployments -n ecommerce \
             -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+      
+      # 13. Configure Host Nginx Reverse Proxy
+      - name: Configure Host Nginx
+        run: |
+          echo "===== INSTALL NGINX IF NEEDED ====="
 
-      # 13. Logout Docker Hub
+          if ! command -v nginx >/dev/null 2>&1; then
+            sudo -n apt-get update
+            sudo -n apt-get install -y nginx
+          fi
+
+          echo "===== CONFIGURE REVERSE PROXY ====="
+
+          sudo -n install -D \
+            -m 644 \
+            toko-coquette/infrastructure/nginx/toko-coquette.conf \
+            /etc/nginx/sites-available/toko-coquette
+
+          sudo -n ln -sfn \
+            /etc/nginx/sites-available/toko-coquette \
+            /etc/nginx/sites-enabled/toko-coquette
+
+          echo "===== TEST NGINX CONFIGURATION ====="
+
+          sudo -n nginx -t
+
+          echo "===== START OR RELOAD NGINX ====="
+
+          sudo -n systemctl enable nginx
+
+          if sudo -n systemctl is-active --quiet nginx; then
+            sudo -n systemctl reload nginx
+          else
+            sudo -n systemctl start nginx
+          fi
+
+          echo "===== VERIFY NGINX ====="
+
+          sudo -n systemctl status nginx --no-pager
+          curl -I http://127.0.0.1
+
+
+      # 14. Logout Docker Hub
       - name: Logout Docker Hub
         if: always()
         run: docker logout || true

@@ -75,7 +75,7 @@ metadata:
   name: ecommerce
   namespace: ecommerce
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - http:
         paths:
