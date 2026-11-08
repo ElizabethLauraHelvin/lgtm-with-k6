@@ -40,7 +40,7 @@ write:
 
   persistence:
     enabled: true
-    storageClass: managed-csi
+    storageClass: local-path
     size: 10Gi
   resources:
     requests:
@@ -58,7 +58,7 @@ backend:
 
   persistence:
     enabled: true
-    storageClass: managed-csi
+    storageClass: local-path
     size: 10Gi
   extraVolumes:
     - name: retention
