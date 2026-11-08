@@ -7,6 +7,11 @@ const jwt = require('jsonwebtoken');
 const db = require('./db');
 
 const app = express();
+
+const { httpObservability } = require('./observability/http-middleware');
+
+app.use(httpObservability('coquette-backend'));
+
 app.use(cors());
 app.use(express.json());
 
