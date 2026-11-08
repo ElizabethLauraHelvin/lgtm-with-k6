@@ -1,0 +1,123 @@
+
+name: Deploy App Coquette
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'toko-coquette/backend/**'
+      - 'toko-coquette/frontend/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toko-coquette-deployment
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: [self-hosted, Linux, X64, k3d-vm]
+
+    env:
+      DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+      VERSION: v1.0.${{ github.run_number }}
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Detect changed folders
+      - name: Detect Changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'toko-coquette/backend/**'
+            frontend:
+              - 'toko-coquette/frontend/**'
+
+      # 3. Login Docker Hub
+      - name: Login to Docker Hub
+        if: steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | \
+          docker login -u "$DOCKER_USER" --password-stdin
+
+      # 4. Build Backend
+      - name: Build Backend Image
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          docker build \
+            -t "$DOCKER_USER/toko-coquette-backend:$VERSION" \
+            -t "$DOCKER_USER/toko-coquette-backend:latest" \
+            ./toko-coquette/backend
+
+      # 5. Push Backend
+      - name: Push Backend Image
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          docker push "$DOCKER_USER/toko-coquette-backend:$VERSION"
+          docker push "$DOCKER_USER/toko-coquette-backend:latest"
+
+      # 6. Build Frontend
+      - name: Build Frontend Image
+        if: steps.filter.outputs.frontend == 'true'
+        run: |
+          docker build \
+            -t "$DOCKER_USER/toko-coquette-frontend:$VERSION" \
+            -t "$DOCKER_USER/toko-coquette-frontend:latest" \
+            ./toko-coquette/frontend
+
+      # 7. Push Frontend
+      - name: Push Frontend Image
+        if: steps.filter.outputs.frontend == 'true'
+        run: |
+          docker push "$DOCKER_USER/toko-coquette-frontend:$VERSION"
+          docker push "$DOCKER_USER/toko-coquette-frontend:latest"
+
+      # 8. Deploy Backend
+      - name: Deploy Backend to k3d
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          kubectl set image deployment/backend \
+            backend="$DOCKER_USER/toko-coquette-backend:$VERSION" \
+            -n ecommerce
+
+          kubectl rollout status deployment/backend \
+            -n ecommerce --timeout=180s
+
+      # 9. Deploy Frontend
+      - name: Deploy Frontend to k3d
+        if: steps.filter.outputs.frontend == 'true'
+        run: |
+          kubectl set image deployment/frontend \
+            frontend="$DOCKER_USER/toko-coquette-frontend:$VERSION" \
+            -n ecommerce
+
+          kubectl rollout status deployment/frontend \
+            -n ecommerce --timeout=180s
+
+      # 10. Verify deployment
+      - name: Verify Deployment
+        run: |
+          echo "===== POD STATUS ====="
+          kubectl get pods -n ecommerce
+
+          echo "===== DEPLOYMENT STATUS ====="
+          kubectl get deployments -n ecommerce
+
+          echo "===== SERVICE STATUS ====="
+          kubectl get services -n ecommerce
+
+      # 11. Logout Docker Hub
+      - name: Logout Docker Hub
+        if: always()
+        run: docker logout

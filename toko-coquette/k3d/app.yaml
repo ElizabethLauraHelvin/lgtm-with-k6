@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,8 +16,8 @@ spec:
     spec:
       containers:
         - name: backend
-          image: elilaura/ecommerce-bow-backend:v1.0
-          imagePullPolicy: Never
+          image: elilaura/toko-coquette-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
 ---
@@ -50,8 +51,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: elilaura/ecommerce-bow-frontend:v1.0
-          imagePullPolicy: Never
+          image: elilaura/toko-coquette-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
 ---
