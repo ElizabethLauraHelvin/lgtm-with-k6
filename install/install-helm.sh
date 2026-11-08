@@ -2,43 +2,40 @@
 
 set -e
 
-echo "===================================="
-echo "       INSTALLING HELM 3"
-echo "===================================="
+HELM_VERSION="v3.17.3"
+ARCH="amd64"
+OS="linux"
 
-# Update package index
-echo "[1/4] Updating package index..."
-sudo apt-get update
+echo "=================================="
+echo "       INSTALL HELM 3"
+echo "=================================="
 
-# Install dependencies
-echo "[2/4] Installing dependencies..."
-sudo apt-get install -y curl gpg apt-transport-https
+# Download Helm
+echo "[1/4] Downloading Helm..."
 
-# Add Helm GPG key
-echo "[3/4] Adding Helm repository..."
+curl -fsSL \
+  "https://get.helm.sh/helm-${HELM_VERSION}-${OS}-${ARCH}.tar.gz" \
+  -o /tmp/helm.tar.gz
 
-sudo mkdir -p /usr/share/keyrings
+# Extract archive
+echo "[2/4] Extracting Helm..."
 
-curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey \
-  | gpg --dearmor \
-  | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+tar -xzf /tmp/helm.tar.gz -C /tmp
 
-# Add Helm repository
-echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/ any main" \
-  | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+# Install binary
+echo "[3/4] Installing Helm..."
 
-# Install Helm
-echo "[4/4] Installing Helm..."
-sudo apt-get update
-sudo apt-get install -y helm
+sudo install \
+  /tmp/linux-amd64/helm \
+  /usr/local/bin/helm
 
-# Verify installation
-echo ""
-echo "===================================="
-echo "       HELM INSTALLATION"
-echo "===================================="
+# Cleanup
+rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
+
+# Verify
+echo "[4/4] Verifying installation..."
 
 helm version
 
 echo ""
-echo "Helm installation completed successfully!"
+echo "Helm installation completed!"
