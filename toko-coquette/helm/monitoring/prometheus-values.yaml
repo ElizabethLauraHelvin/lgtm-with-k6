@@ -66,12 +66,16 @@ grafana:
       isDefault: false
       editable: true
 
-
+    # ==========================================
+    # Mimir
+    # ==========================================
     - name: Mimir-Pods
       type: prometheus
       uid: mimir-pods
       access: proxy
-      url: http://mimir-gateway.monitoring.svc.cluster.local/prometheus
+      url: http://mimir-monolithic.monitoring.svc.cluster.local:9009/prometheus
+      isDefault: false
+      editable: true
       jsonData:
         httpMethod: POST
         prometheusType: Mimir
@@ -81,15 +85,17 @@ grafana:
 
     - name: Mimir-Nodes
       type: prometheus
+      uid: mimir-nodes
       access: proxy
-      url: http://mimir-gateway.monitoring.svc.cluster.local/prometheus
+      url: http://mimir-monolithic.monitoring.svc.cluster.local:9009/prometheus
+      isDefault: false
+      editable: true
       jsonData:
         httpMethod: POST
         prometheusType: Mimir
         httpHeaderName1: X-Scope-OrgID
       secureJsonData:
         httpHeaderValue1: nodes
-    
 
     # ==========================================
     # Tempo
@@ -101,7 +107,6 @@ grafana:
       url: http://tempo-query-frontend.monitoring.svc.cluster.local:3200
       isDefault: false
       editable: true
-
       jsonData:
         tracesToLogsV2:
           datasourceUid: loki
@@ -120,7 +125,7 @@ grafana:
 
         nodeGraph:
           enabled: true
-      
+
     - name: Pyroscope
       type: grafana-pyroscope-datasource
       uid: pyroscope
