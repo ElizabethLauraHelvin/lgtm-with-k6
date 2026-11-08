@@ -8,6 +8,8 @@ on:
     paths:
       - 'toko-coquette/backend/**'
       - 'toko-coquette/frontend/**'
+  
+  workflow_dispatch:
 
 permissions:
   contents: read
