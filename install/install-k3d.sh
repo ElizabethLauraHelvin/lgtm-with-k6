@@ -1,0 +1,1 @@
+ssh azureuser@20.6.9.22
