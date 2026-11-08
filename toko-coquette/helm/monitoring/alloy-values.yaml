@@ -1,9 +1,6 @@
 controller:
   type: daemonset
 
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
-
   podLabels:
     azure.workload.identity/use: "true"
 
