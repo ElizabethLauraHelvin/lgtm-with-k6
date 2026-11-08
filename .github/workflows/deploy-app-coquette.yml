@@ -205,12 +205,9 @@ jobs:
       # 13. Configure Host Nginx Reverse Proxy
       - name: Configure Host Nginx
         run: |
-          echo "===== INSTALL NGINX IF NEEDED ====="
+          echo "===== VERIFY NGINX ====="
 
-          if ! command -v nginx >/dev/null 2>&1; then
-            sudo -n apt-get update
-            sudo -n apt-get install -y nginx
-          fi
+          command -v nginx
 
           echo "===== CONFIGURE REVERSE PROXY ====="
 
@@ -227,7 +224,7 @@ jobs:
 
           sudo -n nginx -t
 
-          echo "===== START OR RELOAD NGINX ====="
+          echo "===== RELOAD NGINX ====="
 
           sudo -n systemctl enable nginx
 
@@ -240,6 +237,7 @@ jobs:
           echo "===== VERIFY NGINX ====="
 
           sudo -n systemctl status nginx --no-pager
+
           curl -I http://127.0.0.1
 
 
