@@ -1,3 +1,4 @@
+
 grafana:
   adminUser: admin
   adminPassword: admin123
@@ -18,7 +19,6 @@ grafana:
       - ReadWriteOnce
     size: 5Gi
 
-  
   deploymentStrategy:
     type: Recreate
 
@@ -33,7 +33,6 @@ grafana:
       secretName: grafana-smtp
       mountPath: /etc/secrets/grafana-smtp
       readOnly: true
-
 
   grafana.ini:
     smtp:
@@ -55,7 +54,10 @@ grafana:
       enabled: false
 
     datasources:
-      enabled: false
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+      searchNamespace: ALL
 
   additionalDataSources:
     - name: Loki
@@ -66,9 +68,6 @@ grafana:
       isDefault: false
       editable: true
 
-    # ==========================================
-    # Mimir
-    # ==========================================
     - name: Mimir-Pods
       type: prometheus
       uid: mimir-pods
@@ -97,9 +96,6 @@ grafana:
       secureJsonData:
         httpHeaderValue1: nodes
 
-    # ==========================================
-    # Tempo
-    # ==========================================
     - name: Tempo
       type: tempo
       uid: tempo
@@ -133,6 +129,7 @@ grafana:
       url: http://pyroscope-query-frontend.monitoring.svc.cluster.local:4040
       isDefault: false
       editable: true
+
 
 # ==================================================
 # Alertmanager
