@@ -202,6 +202,18 @@ jobs:
           kubectl get deployments -n ecommerce \
             -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
       
+      - name: Check Runner Permissions
+        run: |
+          echo "===== RUNNER USER ====="
+          whoami
+          id
+
+          echo "===== NGINX ====="
+          command -v nginx
+
+          echo "===== SUDO PERMISSIONS ====="
+          sudo -n -l || true
+
       # 13. Configure Host Nginx Reverse Proxy
       - name: Configure Host Nginx
         run: |
