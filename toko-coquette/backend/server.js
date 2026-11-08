@@ -32,7 +32,7 @@ function auth(req, res, next) {
   }
 }
 
-/* ---------- AUTH ---------- */
+/* ---------- AUTHENTICATION ---------- */
 app.post('/api/auth/register', (req, res) => {
   const { name, email, password, phone, address } = req.body || {};
   if (!name?.trim() || !phone?.trim() || !address?.trim())
