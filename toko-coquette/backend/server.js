@@ -5,6 +5,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
+const client = require('prom-client');
+
 
 const app = express();
 
@@ -12,8 +14,68 @@ const { httpObservability } = require('./observability/http-middleware');
 
 app.use(httpObservability('coquette-backend'));
 
+// ==========================================
+// PROMETHEUS METRICS
+// ==========================================
+
+const register = new client.Registry();
+
+client.collectDefaultMetrics({
+  register,
+});
+
+// Total HTTP requests
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register],
+});
+
+// HTTP request duration
+const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+  registers: [register],
+});
+
+// Middleware untuk menghitung request
+app.use((req, res, next) => {
+  if (req.path === '/metrics') {
+    return next();
+  }
+
+  const end = httpRequestDuration.startTimer();
+
+  res.on('finish', () => {
+    const route = req.route?.path
+      ? `${req.baseUrl}${req.route.path}`
+      : 'unmatched';
+
+    const labels = {
+      method: req.method,
+      route,
+      status_code: String(res.statusCode),
+    };
+
+    httpRequestsTotal.inc(labels);
+    end(labels);
+  });
+
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
+
+// Endpoint Prometheus
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
 
 const SECRET = process.env.JWT_SECRET || db.jwtSecret;
 const SHIPPING = { reguler: 15000, express: 30000 };
