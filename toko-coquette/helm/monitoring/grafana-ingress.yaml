@@ -3,19 +3,17 @@ kind: Ingress
 metadata:
   name: grafana
   namespace: monitoring
-
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-grafana-stripprefix@kubernetescrd
 spec:
-  ingressClassName: nginx
-
+  ingressClassName: traefik
   rules:
     - http:
         paths:
           - path: /grafana
             pathType: Prefix
-
             backend:
               service:
                 name: monitoring-grafana
-
                 port:
                   number: 80
