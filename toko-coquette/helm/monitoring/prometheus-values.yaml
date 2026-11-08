@@ -13,7 +13,7 @@ grafana:
   persistence:
     enabled: true
     type: pvc
-    storageClassName: standard
+    storageClassName: local-path
     accessModes:
       - ReadWriteOnce
     size: 5Gi
