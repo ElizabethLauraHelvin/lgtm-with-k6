@@ -24,20 +24,20 @@ data:
       ring:
         instance_addr: 127.0.0.1
         kvstore:
-          store: memberlist
+          store: inmemory
 
     ingester:
       ring:
         instance_addr: 127.0.0.1
         kvstore:
-          store: memberlist
+          store: inmemory
         replication_factor: 1
 
     compactor:
       data_dir: /data/compactor
       sharding_ring:
         kvstore:
-          store: memberlist
+          store: inmemory
 
     store_gateway:
       sharding_ring:
