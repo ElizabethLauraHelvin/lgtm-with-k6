@@ -1,159 +1,112 @@
-global:
-  extraEnvFrom:
-    - secretRef:
-        name: azure-storage
 
-  extraArgs:
-    - "-config.expand-env=true"
-    
+deploymentMode: SingleBinary
+
+global: {}
+
 test:
   enabled: false
- 
+
 monitoring:
   selfMonitoring:
     enabled: false
     grafanaAgent:
       installOperator: false
- 
+
 canary:
   enabled: false
 
+# SingleBinary: seluruh proses Loki berjalan dalam satu Pod.
+singleBinary:
+  replicas: 1
+
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Matikan komponen Microservices.
 read:
-  replicas: 1
+  replicas: 0
 
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
-
-  resources:
-    requests:
-      cpu: 50m
-      memory: 192Mi
-    limits:
-      cpu: 200m
-      memory: 384Mi
- 
 write:
-  replicas: 1
+  replicas: 0
 
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
-
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 10Gi
-  resources:
-    requests:
-      cpu: 100m
-      memory: 384Mi
-    limits:
-      cpu: 400m
-      memory: 768Mi
- 
 backend:
-  replicas: 1
+  replicas: 0
 
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
-
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 10Gi
-  extraVolumes:
-    - name: retention
-      emptyDir: {}
-  extraVolumeMounts:
-    - name: retention
-      mountPath: /data
-  resources:
-    requests:
-      cpu: 150m
-      memory: 384Mi
-    limits:
-      cpu: 400m
-      memory: 768Mi
- 
-gateway:
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
-    
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
- 
+# Cache tidak diperlukan untuk deployment kecil.
 chunksCache:
-  enabled: true
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
+  enabled: false
 
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
- 
 resultsCache:
-  enabled: true
-  nodeSelector:
-    kubernetes.azure.com/agentpool: agentpool
+  enabled: false
 
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
- 
+gateway:
+  enabled: true
+
 loki:
   auth_enabled: false
- 
+
   commonConfig:
     replication_factor: 1
- 
+
   limits_config:
     retention_period: 1h
     max_query_lookback: 1h
     ingestion_rate_mb: 10
     ingestion_burst_size_mb: 20
- 
+
   compactor:
-    working_directory: /data/compactor
+    working_directory: /var/loki/compactor
     compaction_interval: 5m
     retention_enabled: true
     retention_delete_delay: 2m
-    delete_request_store: azure
- 
+    delete_request_store: filesystem
+
   schemaConfig:
     configs:
       - from: "2026-01-01"
         store: tsdb
-        object_store: azure
+        object_store: filesystem
         schema: v13
         index:
           prefix: index_
           period: 24h
- 
+
   storage:
-    type: azure
-    bucketNames:
-      chunks: loki
-      ruler: loki
-      admin: loki
- 
-  storage_config:
-    azure:
-      account_name: "storagelgtmlaurajaq"
-      account_key: "${STORAGE_ACCOUNT_KEY}"
-      container_name: loki
-    tsdb_shipper:
-      active_index_directory: /var/loki/index
-      cache_location: /var/loki/index_cache
-      cache_ttl: 24h
+    type: filesystem
+    filesystem:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+
+# ==================================================
+# AZURE STORAGE CONFIGURATION (DISABLED)
+# Aktifkan kembali jika ingin menggunakan Azure Blob.
+# ==================================================
+
+# global:
+#   extraEnvFrom:
+#     - secretRef:
+#         name: azure-storage
+
+# loki:
+#   storage:
+#     type: azure
+#     bucketNames:
+#       chunks: loki
+#       ruler: loki
+#       admin: loki
+#
+#   storage_config:
+#     azure:
+#       account_name: "YOUR_STORAGE_ACCOUNT"
+#       account_key: "${STORAGE_ACCOUNT_KEY}"
+#       container_name: loki
