@@ -1,0 +1,218 @@
+# ============================================================
+# Grafana Tempo Distributed
+# Azure Blob Storage Backend
+# Container: tempo
+# ============================================================
+global:
+  extraEnvFrom:
+    - secretRef:
+        name: azure-storage
+
+  extraArgs: []
+
+tempo:
+  structuredConfig:
+
+    # --------------------------------------------------------
+    # Multitenancy
+    # --------------------------------------------------------
+    multitenancy_enabled: false
+
+    # --------------------------------------------------------
+    # Azure Blob Storage
+    # --------------------------------------------------------
+    storage:
+      trace:
+        backend: azure
+        azure:
+          storage_account_name: "storagelgtmlaurajaq" 
+          storage_account_key: "${STORAGE_ACCOUNT_KEY}"
+          container_name: "tempo"
+
+    metrics_generator:
+      storage:
+        path: /var/tempo/generator/wal
+
+        remote_write:
+          - url: http://mimir-gateway.monitoring.svc.cluster.local/api/v1/push
+            send_exemplars: true
+            headers:
+              X-Scope-OrgID: pods
+      
+      processor:
+        service_graphs:
+          dimensions:
+            - service.name
+
+        span_metrics:
+          dimensions:
+            - service.name
+    
+    overrides:
+      defaults:
+        metrics_generator:
+          processors:
+            - service-graphs
+            - span-metrics
+
+# ============================================================
+# Distributor
+# Menerima traces dari Grafana Alloy via OTLP
+# ============================================================
+
+distributor:
+  replicas: 2
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+  
+  extraArgs:
+    - "-config.expand-env=true"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# ============================================================
+# Ingester
+# ============================================================
+
+ingester:
+  replicas: 3
+
+  extraArgs:
+    - "-config.expand-env=true"
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  persistence:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+
+# ============================================================
+# Querier
+# Membaca traces
+# ============================================================
+
+querier:
+  replicas: 2
+
+  extraArgs:
+    - "-config.expand-env=true"
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# ============================================================
+# Query Frontend
+# Endpoint yang digunakan Grafana untuk query Tempo
+# ============================================================
+
+queryFrontend:
+  replicas: 2
+
+  extraArgs:
+    - "-config.expand-env=true"
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# ============================================================
+# Compactor
+# Mengelola block traces di Azure Blob Storage
+# ============================================================
+
+compactor:
+  replicas: 1
+
+  extraArgs:
+    - "-config.expand-env=true"
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+
+# ============================================================
+# Metrics Generator
+# Optional:
+# Menghasilkan metrics dari traces
+# ============================================================
+
+metricsGenerator:
+  enabled: true
+
+  extraArgs:
+    - "-config.expand-env=true"
+  
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+
+# ============================================================
+# Gateway
+# ============================================================
+
+gateway:
+  enabled: true
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  replicas: 2
+
+  service:
+    type: ClusterIP
+
+
+# ============================================================
+# OTLP Trace Receiver
+# Alloy akan mengirim trace ke Tempo melalui OTLP
+# ============================================================
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true

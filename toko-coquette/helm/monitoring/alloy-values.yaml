@@ -1,0 +1,454 @@
+controller:
+  type: daemonset
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  podLabels:
+    azure.workload.identity/use: "true"
+
+alloy:
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    
+    - name: faro
+      port: 12347
+      targetPort: 12347
+      protocol: TCP
+
+  configMap:
+    create: true
+    content: |
+      logging {
+        level = "info"
+      }
+
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.logs.receiver]
+      }
+
+      loki.process "logs" {
+        stage.regex {
+          expression = "(?i)(?P<level>(error|warn|warning|info|debug|fatal|panic|critical))"
+        }
+
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+        }
+      }
+
+      
+      faro.receiver "frontend" {
+        server {
+          listen_address = "0.0.0.0"
+          listen_port    = 12347
+
+          cors_allowed_origins = ["*"]
+        }
+
+        output {
+          logs   = [loki.process.faro_logs.receiver]
+          traces = [otelcol.processor.batch.faro_traces.input]
+        }
+      }
+
+      loki.process "faro_logs" {
+        stage.static_labels {
+          values = {
+            source       = "faro",
+            service_name = "ecommerce-frontend",
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      otelcol.processor.batch "faro_traces" {
+        output {
+          traces = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+
+      discovery.kubernetes "pods_metrics" {
+        role = "pod"
+      }
+
+      discovery.relabel "metrics" {
+        targets = discovery.kubernetes.pods_metrics.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+          regex         = "true"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+          regex         = "(.+)"
+          target_label  = "__metrics_path__"
+        }
+
+        rule {
+          source_labels = [
+            "__address__",
+            "__meta_kubernetes_pod_annotation_prometheus_io_port",
+          ]
+          regex        = "([^:]+)(?::\\d+)?;(\\d+)"
+          replacement  = "$1:$2"
+          target_label = "__address__"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+      }
+
+      prometheus.scrape "pods" {
+        targets         = discovery.relabel.metrics.output
+        forward_to      = [prometheus.remote_write.mimir_pods.receiver]
+        scrape_interval = "15s"
+      }
+
+      prometheus.scrape "kube_state_metrics" {
+        targets = [
+          {
+            "__address__" = "monitoring-kube-state-metrics.monitoring.svc.cluster.local:8080",
+            "job"         = "kube-state-metrics",
+          },
+        ]
+
+        forward_to      = [prometheus.remote_write.mimir_pods.receiver]
+        scrape_interval = "15s"
+      }
+
+      prometheus.exporter.azure "blob_storage" {
+        subscriptions = [
+          "6da6e9ff-7e88-4e89-a3e6-5dfc9d23eabd",
+        ]
+
+        resource_type = "Microsoft.Storage/storageAccounts"
+
+        metric_namespace = "Microsoft.Storage/storageAccounts"
+
+        metrics = [
+          "BlobCapacity",
+        ]
+
+        included_dimensions = [
+          "ContainerName",
+          "Tier",
+          "BlobType",
+        ]
+
+        metric_aggregations = [
+          "average",
+        ]
+
+        regions = [
+          "eastasia",
+        ]
+
+        timespan = "PT1H"
+        interval = "PT1H"
+      }
+
+      prometheus.scrape "azure_blob_storage" {
+        targets = prometheus.exporter.azure.blob_storage.targets
+
+        forward_to = [prometheus.remote_write.mimir_pods.receiver]
+
+        scrape_interval = "1m"
+      }
+
+
+      discovery.kubernetes "node_exporter_pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "node_exporter" {
+        targets = discovery.kubernetes.node_exporter_pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "monitoring"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "prometheus-node-exporter"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_ip"]
+          replacement   = "$1:9100"
+          target_label  = "__address__"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+
+        rule {
+          replacement  = "node-exporter"
+          target_label = "job"
+        }
+      }
+
+      prometheus.scrape "node_exporter" {
+        targets         = discovery.relabel.node_exporter.output
+        forward_to      = [prometheus.remote_write.mimir_nodes.receiver]
+        scrape_interval = "15s"
+      }
+
+      discovery.kubernetes "kubelet_nodes" {
+        role = "node"
+      }
+
+      discovery.relabel "kubelet_cadvisor" {
+        targets = discovery.kubernetes.kubelet_nodes.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_node_address_InternalIP"]
+          regex         = "(.*)"
+          target_label  = "__address__"
+          replacement   = "$1:10250"
+        }
+
+        rule {
+          target_label = "__metrics_path__"
+          replacement  = "/metrics/cadvisor"
+        }
+
+        rule {
+          replacement  = "https"
+          target_label = "__scheme__"
+        }
+
+        rule {
+          replacement  = "cadvisor"
+          target_label = "job"
+        }
+      }
+
+      prometheus.scrape "kubelet_cadvisor" {
+        targets = discovery.relabel.kubelet_cadvisor.output
+
+        scrape_interval = "15s"
+
+        scheme = "https"
+
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+        tls_config {
+          insecure_skip_verify = true
+        }
+
+        honor_labels = true
+
+        forward_to = [
+          prometheus.remote_write.mimir_pods.receiver,
+        ]
+      }
+
+      
+
+      prometheus.remote_write "mimir_pods" {
+        endpoint {
+          url = "http://mimir-gateway.monitoring.svc.cluster.local/api/v1/push"
+
+          headers = {
+            "X-Scope-OrgID" = "pods",
+          }
+        }
+      }
+
+      prometheus.remote_write "mimir_nodes" {
+        endpoint {
+          url = "http://mimir-gateway.monitoring.svc.cluster.local/api/v1/push"
+
+          headers = {
+            "X-Scope-OrgID" = "nodes",
+          }
+        }
+      }
+
+
+      otelcol.receiver.otlp "traces" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+
+        output {
+          traces = [otelcol.processor.batch.traces.input]
+          metrics = [otelcol.processor.batch.metrics.input]
+        }
+      }
+
+      otelcol.processor.batch "traces" {
+        output {
+          traces = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+      otelcol.processor.batch "metrics" {
+        output {
+          metrics = [otelcol.exporter.prometheus.mimir_pods.input]
+        }
+      }
+
+      otelcol.exporter.prometheus "mimir_pods" {
+        forward_to = [
+          prometheus.remote_write.mimir_pods.receiver,
+        ]
+      }
+
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "tempo-distributor.monitoring.svc.cluster.local:4317"
+
+          tls {
+            insecure = true
+          }
+        }
+      }
+    
+      discovery.kubernetes "pprof_pods" {
+          role = "pod"
+        }
+
+      discovery.relabel "pprof_pods" {
+        targets = discovery.kubernetes.pprof_pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "ecommerce"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          regex         = "frontend-service|postgresql"
+          action        = "drop"
+        }
+
+        rule {
+          source_labels = ["__address__"]
+          regex         = "(.+):\\d+"
+          replacement   = "$1:6060"
+          target_label  = "__address__"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "service"
+        }
+      }
+
+      pyroscope.scrape "apps" {
+        targets    = discovery.relabel.pprof_pods.output
+        forward_to = [pyroscope.write.pyroscope.receiver]
+
+        profiling_config {
+          profile.process_cpu {
+            enabled = true
+          }
+
+          profile.memory {
+            enabled = true
+          }
+
+          profile.goroutine {
+            enabled = true
+          }
+
+          profile.block {
+            enabled = true
+          }
+
+          profile.mutex {
+            enabled = true
+          }
+        }
+      }
+
+      pyroscope.write "pyroscope" {
+        endpoint {
+          url = "http://pyroscope-distributor.monitoring.svc.cluster.local:4040"
+        }
+
+        external_labels = {
+          "environment" = "production",
+          "cluster"     = "aks-lgtm-laura",
+        }
+      }

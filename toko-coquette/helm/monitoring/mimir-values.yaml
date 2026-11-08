@@ -1,0 +1,266 @@
+global:
+  extraEnvFrom:
+    - secretRef:
+        name: azure-storage
+
+  extraArgs:
+    - "-config.expand-env=true"
+    
+mimir:
+  structuredConfig:
+    multitenancy_enabled: true
+
+    usage_stats:
+      enabled: false
+
+    common:
+      storage:
+        backend: azure
+        azure:
+          account_name: "storagelgtmlaurajaq"
+          account_key: "${STORAGE_ACCOUNT_KEY}"
+
+    blocks_storage:
+      backend: azure
+      azure:
+        container_name: "mimir-blocks"
+
+    ruler_storage:
+      backend: azure
+      azure:
+        container_name: "mimir-ruler"
+
+    alertmanager_storage:
+      backend: azure
+      azure:
+        container_name: "mimir-alertmanager"
+
+    limits:
+      compactor_blocks_retention_period: 30d
+      
+# -----------------------------
+# Distributor
+# -----------------------------
+distributor:
+  replicas: 2
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# -----------------------------
+# Ingester
+# -----------------------------
+ingester:
+  replicas: 3
+
+  zoneAwareReplication:
+    enabled: true
+
+    zones:
+      - name: zone-a
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+
+      - name: zone-b
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+      
+      - name: zone-c
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+
+# -----------------------------
+# Querier
+# -----------------------------
+querier:
+  replicas: 2
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# -----------------------------
+# Query Frontend
+# -----------------------------
+query_frontend:
+  replicas: 2
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# -----------------------------
+# Query Scheduler
+# -----------------------------
+query_scheduler:
+  replicas: 2
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+
+# -----------------------------
+# Store Gateway
+# -----------------------------
+store_gateway:
+  replicas: 3
+
+  zoneAwareReplication:
+    enabled: true
+
+    zones:
+      - name: zone-a
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+
+      - name: zone-b
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+      
+      - name: zone-c
+        nodeSelector:
+          kubernetes.azure.com/agentpool: agentpool
+
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+
+# -----------------------------
+# Compactor
+# -----------------------------
+compactor:
+  replicas: 1
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+
+# -----------------------------
+# Ruler
+# -----------------------------
+ruler:
+  replicas: 1
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+
+# -----------------------------
+# Alertmanager
+# -----------------------------
+alertmanager:
+  replicas: 1
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  persistentVolume:
+    enabled: true
+    size: 5Gi
+
+
+# -----------------------------
+# Mimir Gateway
+# -----------------------------
+gateway:
+  enabled: true
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  replicas: 2
+
+  service:
+    type: ClusterIP
+
+# -----------------------------
+# Kafka
+# -----------------------------
+
+kafka:
+  enabled: true
+
+  nodeSelector:
+    kubernetes.azure.com/agentpool: agentpool
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+# naikin pvc kafka
+# kubectl patch pvc kafka-data-mimir-kafka-0 \
+#   -n monitoring \
+#   -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
+
+rollout_operator:
+  enabled: false
+
+minio:
+  enabled: false
