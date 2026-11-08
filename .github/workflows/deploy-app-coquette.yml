@@ -217,41 +217,32 @@ jobs:
       # 13. Configure Host Nginx Reverse Proxy
       - name: Configure Host Nginx
         run: |
-          echo "===== VERIFY NGINX ====="
+          echo "===== RUNNER USER ====="
+          whoami
 
+          echo "===== VERIFY NGINX ====="
           command -v nginx
 
           echo "===== CONFIGURE REVERSE PROXY ====="
-
-          sudo -n install -D \
+          sudo -n /usr/bin/install -D \
             -m 644 \
             toko-coquette/infrastructure/nginx/toko-coquette.conf \
             /etc/nginx/sites-available/toko-coquette
 
-          sudo -n ln -sfn \
+          sudo -n /usr/bin/ln -sfn \
             /etc/nginx/sites-available/toko-coquette \
             /etc/nginx/sites-enabled/toko-coquette
 
-          echo "===== TEST NGINX CONFIGURATION ====="
-
-          sudo -n nginx -t
+          echo "===== TEST NGINX ====="
+          sudo -n /usr/sbin/nginx -t
 
           echo "===== RELOAD NGINX ====="
-
-          sudo -n systemctl enable nginx
-
-          if sudo -n systemctl is-active --quiet nginx; then
-            sudo -n systemctl reload nginx
-          else
-            sudo -n systemctl start nginx
-          fi
+          sudo -n /usr/bin/systemctl enable nginx
+          sudo -n /usr/bin/systemctl reload nginx
 
           echo "===== VERIFY NGINX ====="
-
-          sudo -n systemctl status nginx --no-pager
-
+          sudo -n /usr/bin/systemctl status nginx --no-pager
           curl -I http://127.0.0.1
-
 
       # 14. Logout Docker Hub
       - name: Logout Docker Hub
