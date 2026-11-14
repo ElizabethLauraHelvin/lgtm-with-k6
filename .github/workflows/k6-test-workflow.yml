@@ -1,0 +1,95 @@
+name: K6 Performance Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: "Pilih jenis performance test"
+        required: true
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+          - spike
+          - soak
+      target_url:
+        description: "URL aplikasi yang akan diuji"
+        required: true
+        type: string
+        default: "http://127.0.0.1:8080"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k6-performance-test
+  cancel-in-progress: false
+
+jobs:
+  performance-test:
+    name: Run ${{ inputs.test_type }} test
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check k6 installation
+        shell: bash
+        run: |
+          if ! command -v k6 >/dev/null 2>&1; then
+            echo "k6 belum ter-install di self-hosted runner."
+            echo "Install k6 terlebih dahulu pada Ubuntu VM."
+            exit 1
+          fi
+          k6 version
+
+      - name: Select test script
+        id: select
+        shell: bash
+        env:
+          TEST_TYPE: ${{ inputs.test_type }}
+        run: |
+          case "$TEST_TYPE" in
+            smoke) SCRIPT="k6-script-test/smoke-test.js" ;;
+            load)  SCRIPT="k6-script-test/load-test.js" ;;
+            stress) SCRIPT="k6-script-test/stress-test.js" ;;
+            spike) SCRIPT="k6-script-test/spike-test.js" ;;
+            soak)  SCRIPT="k6-script-test/soak-test.js" ;;
+            *)
+              echo "Jenis test tidak dikenal: $TEST_TYPE"
+              exit 1
+              ;;
+          esac
+
+          if [ ! -f "$SCRIPT" ]; then
+            echo "File test tidak ditemukan: $SCRIPT"
+            echo "Pastikan file tersebut tersedia di folder k6-script-test/."
+            exit 1
+          fi
+
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          echo "Menjalankan: $SCRIPT"
+
+      - name: Run selected k6 test
+        shell: bash
+        env:
+          TARGET_URL: ${{ inputs.target_url }}
+          TEST_TYPE: ${{ inputs.test_type }}
+          SCRIPT: ${{ steps.select.outputs.script }}
+        run: |
+          mkdir -p k6-results
+          SAFE_TYPE="${TEST_TYPE//[^a-zA-Z0-9_-]/_}"
+
+          k6 run             --env BASE_URL="$TARGET_URL"             --summary-export "k6-results/${SAFE_TYPE}-summary.json"             "$SCRIPT"
+
+      - name: Upload test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ inputs.test_type }}-result-${{ github.run_number }}
+          path: k6-results/
+          if-no-files-found: warn
+          retention-days: 14
