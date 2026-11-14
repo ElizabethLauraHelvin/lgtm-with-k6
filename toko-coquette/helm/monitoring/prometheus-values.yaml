@@ -1,4 +1,3 @@
-
 grafana:
   adminUser: admin
   adminPassword: admin123
@@ -64,7 +63,7 @@ grafana:
       type: loki
       uid: loki
       access: proxy
-      url: http://loki-gateway.monitoring.svc.cluster.local
+      url: http://loki:3100
       isDefault: false
       editable: true
 
@@ -130,7 +129,6 @@ grafana:
       isDefault: false
       editable: true
 
-
 # ==================================================
 # Alertmanager
 # ==================================================
@@ -139,7 +137,6 @@ alertmanager:
 
   alertmanagerSpec:
     replicas: 1
-
 
 # ==================================================
 # Prometheus Operator
@@ -155,7 +152,6 @@ prometheusOperator:
       cpu: 100m
       memory: 128Mi
 
-
 # ==================================================
 # Kube State Metrics
 # ==================================================
@@ -167,7 +163,6 @@ kube-state-metrics:
     limits:
       cpu: 50m
       memory: 64Mi
-
 
 # ==================================================
 # Disable Control Plane ServiceMonitors
@@ -192,7 +187,6 @@ kubeEtcd:
 
 coreDns:
   enabled: false
-
 
 # ==================================================
 # Prometheus Server
