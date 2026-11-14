@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: grafana
   namespace: monitoring
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: monitoring-grafana-stripprefix@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
