@@ -36,15 +36,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check k6 installation
+      - name: Check required tools
         shell: bash
         run: |
-          if ! command -v k6 >/dev/null 2>&1; then
-            echo "k6 belum ter-install di self-hosted runner."
-            echo "Install k6 terlebih dahulu pada Ubuntu VM."
+          set -euo pipefail
+
+          command -v k6 >/dev/null || {
+            echo "k6 belum ter-install pada Ubuntu VM."
             exit 1
-          fi
+          }
+
+          command -v kubectl >/dev/null || {
+            echo "kubectl tidak ditemukan pada runner."
+            exit 1
+          }
+
           k6 version
+          kubectl get namespace monitoring
 
       - name: Select test script
         id: select
@@ -52,12 +60,14 @@ jobs:
         env:
           TEST_TYPE: ${{ inputs.test_type }}
         run: |
+          set -euo pipefail
+
           case "$TEST_TYPE" in
-            smoke) SCRIPT="k6-script-test/smoke-test.js" ;;
-            load)  SCRIPT="k6-script-test/load-test.js" ;;
+            smoke)  SCRIPT="k6-script-test/smoke-test.js" ;;
+            load)   SCRIPT="k6-script-test/load-test.js" ;;
             stress) SCRIPT="k6-script-test/stress-test.js" ;;
-            spike) SCRIPT="k6-script-test/spike-test.js" ;;
-            soak)  SCRIPT="k6-script-test/soak-test.js" ;;
+            spike)  SCRIPT="k6-script-test/spike-test.js" ;;
+            soak)   SCRIPT="k6-script-test/soak-test.js" ;;
             *)
               echo "Jenis test tidak dikenal: $TEST_TYPE"
               exit 1
@@ -66,24 +76,61 @@ jobs:
 
           if [ ! -f "$SCRIPT" ]; then
             echo "File test tidak ditemukan: $SCRIPT"
-            echo "Pastikan file tersebut tersedia di folder k6-script-test/."
             exit 1
           fi
 
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
           echo "Menjalankan: $SCRIPT"
 
-      - name: Run selected k6 test
+      - name: Start Mimir port-forward and run k6
         shell: bash
         env:
           TARGET_URL: ${{ inputs.target_url }}
           TEST_TYPE: ${{ inputs.test_type }}
           SCRIPT: ${{ steps.select.outputs.script }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
+          set -euo pipefail
+
           mkdir -p k6-results
           SAFE_TYPE="${TEST_TYPE//[^a-zA-Z0-9_-]/_}"
 
-          k6 run             --env BASE_URL="$TARGET_URL"             --summary-export "k6-results/${SAFE_TYPE}-summary.json"             "$SCRIPT"
+          # Forward the Mimir Monolithic remote-write endpoint to the runner.
+          kubectl -n monitoring port-forward             svc/mimir-monolithic 19009:9009             > k6-results/mimir-port-forward.log 2>&1 &
+          PORT_FORWARD_PID=$!
+
+          cleanup() {
+            kill "$PORT_FORWARD_PID" 2>/dev/null || true
+            wait "$PORT_FORWARD_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          # Wait until the forwarded Mimir endpoint is reachable.
+          READY=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:19009/ready >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            echo "Mimir tidak dapat dijangkau melalui port-forward."
+            cat k6-results/mimir-port-forward.log
+            exit 1
+          fi
+
+          echo "Mimir Monolithic siap menerima remote-write metrics."
+
+          export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
+          export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
+          export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
+          export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
+          export K6_PROMETHEUS_RW_LABELS="test_type=${SAFE_TYPE},test_run=${GITHUB_RUN_ID},environment=coquette"
+
+          k6 run             -o experimental-prometheus-rw             --tag testid="github-${GITHUB_RUN_ID}"             --env BASE_URL="$TARGET_URL"             --summary-export "k6-results/${SAFE_TYPE}-summary.json"             "$SCRIPT"
 
       - name: Upload test result
         if: always()
