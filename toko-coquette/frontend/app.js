@@ -19,7 +19,7 @@ async function api(path, opts = {}) {
 function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 2000); }
 function go(v) { view = v; toggleCart(false); render(); scrollTo(0, 0); }
 
-/* ---------- AKUN ---------- */
+/* ---------- ACCOUNT ---------- */
 function renderAuth() {
   $('auth').innerHTML = user
     ? `<span class="hi">Hai, ${esc(user.name.split(' ')[0])} 🎀</span>
