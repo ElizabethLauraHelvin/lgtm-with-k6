@@ -1,7 +1,5 @@
-import http from 'k6/http';
-import { check, sleep } from 'k6';
-
-const BASE_URL = (__ENV.BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+import { sleep } from 'k6';
+import { runApiIteration } from './api-flow.js';
 
 export const options = {
   stages: [
@@ -12,18 +10,9 @@ export const options = {
     { duration: '1m', target: 0 },
   ],
   // Stress tests may exceed normal latency/error thresholds by design.
-  // Review the k6 summary to identify the point where performance degrades.
 };
 
 export default function () {
-  const response = http.get(`${BASE_URL}/`, {
-    tags: { test_type: 'stress' },
-  });
-
-  check(response, {
-    'server returns a response': (r) => r.status > 0,
-    'server did not return 5xx': (r) => r.status < 500,
-  });
-
+  runApiIteration('stress');
   sleep(1);
 }
