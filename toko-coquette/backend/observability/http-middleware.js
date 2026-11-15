@@ -1,58 +1,245 @@
-'use strict';
+// BACKEND: Express REST API + autentikasi (JWT) + melayani folder frontend
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const db = require("./db");
+const client = require("prom-client");
 
-const { metrics, trace, SpanStatusCode } = require('@opentelemetry/api');
+const app = express();
 
-const meter = metrics.getMeter('coquette-http');
-const requestCounter = meter.createCounter('http.server.request.count', {
-  description: 'Number of completed HTTP requests',
+const { httpObservability } = require("./observability/http-middleware");
+
+app.use(httpObservability("coquette-backend"));
+
+// ==========================================
+// PROMETHEUS METRICS
+// ==========================================
+
+const register = new client.Registry();
+
+client.collectDefaultMetrics({
+  register,
 });
-const requestDuration = meter.createHistogram('http.server.request.duration', {
-  description: 'HTTP server request duration',
-  unit: 'ms',
+
+// Total HTTP requests
+const httpRequestsTotal = new client.Counter({
+  name: "http_requests_total",
+  help: "Total HTTP requests",
+  labelNames: ["method", "route", "status_code"],
+  registers: [register],
 });
 
-function httpObservability(serviceName = process.env.OTEL_SERVICE_NAME || 'coquette-backend') {
-  return function observabilityMiddleware(req, res, next) {
-    const startedAt = process.hrtime.bigint();
-    const routePath = req.route && req.route.path ? req.route.path : req.path;
+// HTTP request duration
+const httpRequestDuration = new client.Histogram({
+  name: "http_request_duration_seconds",
+  help: "HTTP request duration in seconds",
+  labelNames: ["method", "route", "status_code"],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+  registers: [register],
+});
 
-    res.on('finish', () => {
-      const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
-      const statusCode = res.statusCode;
-      const method = req.method;
-      const path = routePath || req.path;
-      const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+// Middleware untuk menghitung request
+app.use((req, res, next) => {
+  if (req.path === "/metrics") {
+    return next();
+  }
 
-      const attributes = {
-        'service.name': serviceName,
-        'http.request.method': method,
-        'http.route': path,
-        'http.response.status_code': statusCode,
-      };
+  const end = httpRequestDuration.startTimer();
 
-      requestCounter.add(1, attributes);
-      requestDuration.record(durationMs, attributes);
+  res.on("finish", () => {
+    const route = req.route?.path
+      ? `${req.baseUrl}${req.route.path}`
+      : "unmatched";
 
-      const span = trace.getActiveSpan();
-      if (span && statusCode >= 500) {
-        span.setStatus({ code: SpanStatusCode.ERROR });
-      }
+    const labels = {
+      method: req.method,
+      route,
+      status_code: String(res.statusCode),
+    };
 
-      // Do not log request bodies, authorization headers, cookies, or user data.
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level,
-        service: serviceName,
-        event: 'http_request_completed',
-        method,
-        path,
-        status_code: statusCode,
-        duration_ms: Number(durationMs.toFixed(2)),
-      }));
-    });
+    httpRequestsTotal.inc(labels);
+    end(labels);
+  });
 
+  next();
+});
+
+app.use(cors());
+app.use(express.json());
+
+// Endpoint Prometheus
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
+const SECRET = process.env.JWT_SECRET || db.jwtSecret;
+const SHIPPING = { reguler: 15000, express: 30000 };
+const PAYMENTS = ["Transfer Bank", "QRIS", "COD"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const signToken = (u) => jwt.sign({ uid: u.id }, SECRET, { expiresIn: "7d" });
+const publicUser = (u) => ({
+  id: u.id,
+  name: u.name,
+  email: u.email,
+  phone: u.phone,
+  address: u.address,
+});
+
+// Middleware: wajib login
+function auth(req, res, next) {
+  const h = req.headers.authorization || "";
+  try {
+    const { uid } = jwt.verify(
+      h.startsWith("Bearer ") ? h.slice(7) : "",
+      SECRET,
+    );
+    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(uid);
+    if (!u) throw new Error("no user");
+    req.user = u;
     next();
-  };
+  } catch (e) {
+    res.status(401).json({ error: "Silakan masuk dulu" });
+  }
 }
 
-module.exports = { httpObservability };
+/* ---------- AUTHENTICATION ---------- */
+app.post("/api/auth/register", (req, res) => {
+  const { name, email, password, phone, address } = req.body || {};
+  if (!name?.trim() || !phone?.trim() || !address?.trim())
+    return res
+      .status(400)
+      .json({ error: "Nama, nomor HP, dan alamat wajib diisi" });
+  if (!EMAIL_RE.test(email || ""))
+    return res.status(400).json({ error: "Format email tidak valid" });
+  if (typeof password !== "string" || password.length < 6)
+    return res.status(400).json({ error: "Password minimal 6 karakter" });
+
+  const mail = email.trim().toLowerCase();
+  if (db.prepare("SELECT id FROM users WHERE email = ?").get(mail))
+    return res
+      .status(409)
+      .json({ error: "Email sudah terdaftar, silakan masuk" });
+
+  const info = db
+    .prepare(
+      "INSERT INTO users (name,email,password_hash,phone,address) VALUES (?,?,?,?,?)",
+    )
+    .run(
+      name.trim(),
+      mail,
+      bcrypt.hashSync(password, 10),
+      phone.trim(),
+      address.trim(),
+    );
+  const user = db
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(info.lastInsertRowid);
+  res.status(201).json({ token: signToken(user), user: publicUser(user) });
+});
+
+app.post("/api/auth/login", (req, res) => {
+  const { email, password } = req.body || {};
+  const user = db.prepare("SELECT * FROM users WHERE email = ?").get(
+    String(email || "")
+      .trim()
+      .toLowerCase(),
+  );
+  if (!user || !bcrypt.compareSync(String(password || ""), user.password_hash))
+    return res.status(401).json({ error: "Email atau password salah" });
+  res.json({ token: signToken(user), user: publicUser(user) });
+});
+
+app.get("/api/auth/me", auth, (req, res) =>
+  res.json({ user: publicUser(req.user) }),
+);
+
+/* ---------- PRODUK ---------- */
+app.get("/api/products", (req, res) => {
+  const { category } = req.query;
+  const rows = category
+    ? db
+        .prepare("SELECT * FROM products WHERE category = ? ORDER BY id")
+        .all(category)
+    : db.prepare("SELECT * FROM products ORDER BY id").all();
+  res.json(rows);
+});
+
+app.get("/api/products/:id", (req, res) => {
+  const p = db
+    .prepare("SELECT * FROM products WHERE id = ?")
+    .get(req.params.id);
+  p ? res.json(p) : res.status(404).json({ error: "Produk tidak ditemukan" });
+});
+
+/* ---------- PESANAN (wajib login) ---------- */
+// Data penerima diambil dari akun; harga dihitung ulang di server
+app.post("/api/orders", auth, (req, res) => {
+  const { payment, shipping, items } = req.body || {};
+  if (!PAYMENTS.includes(payment) || !(shipping in SHIPPING))
+    return res
+      .status(400)
+      .json({ error: "Metode pembayaran/pengiriman tidak valid" });
+  if (!Array.isArray(items) || !items.length)
+    return res.status(400).json({ error: "Keranjang kosong" });
+
+  const getProduct = db.prepare("SELECT * FROM products WHERE id = ?");
+  const lines = [];
+  let subtotal = 0;
+  for (const it of items) {
+    const p = getProduct.get(it.productId);
+    const qty = Math.floor(Number(it.qty));
+    if (!p || !(qty > 0 && qty <= 99))
+      return res.status(400).json({ error: "Item tidak valid" });
+    lines.push({ p, qty });
+    subtotal += p.price * qty;
+  }
+  const u = req.user;
+  const orderId = "PB" + Date.now().toString(36).toUpperCase();
+  const total = subtotal + SHIPPING[shipping];
+
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO orders (id,user_id,name,phone,address,payment,shipping,total)
+                VALUES (?,?,?,?,?,?,?,?)`,
+    ).run(
+      orderId,
+      u.id,
+      u.name,
+      u.phone,
+      u.address,
+      payment,
+      SHIPPING[shipping],
+      total,
+    );
+    const insItem =
+      db.prepare(`INSERT INTO order_items (order_id,product_id,name,emoji,price,qty)
+                                VALUES (?,?,?,?,?,?)`);
+    lines.forEach(({ p, qty }) =>
+      insItem.run(orderId, p.id, p.name, p.emoji, p.price, qty),
+    );
+  })();
+
+  res.status(201).json({ id: orderId, total, status: "Menunggu pembayaran" });
+});
+
+app.get("/api/orders", auth, (req, res) => {
+  const orders = db
+    .prepare(
+      "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC, rowid DESC",
+    )
+    .all(req.user.id);
+  const itemsOf = db.prepare("SELECT * FROM order_items WHERE order_id = ?");
+  res.json(orders.map((o) => ({ ...o, items: itemsOf.all(o.id) })));
+});
+
+/* ---------- FRONTEND ---------- */
+app.use(express.static(path.join(__dirname, "..", "frontend")));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`Toko Coquette jalan di http://localhost:${PORT}`),
+);
