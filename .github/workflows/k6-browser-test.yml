@@ -1,70 +1,29 @@
-name: K6 Browser Capacity Testing
+name: K6 Browser Auto Capacity and Recovery Test
 
 on:
   workflow_dispatch:
-    inputs:
-      test_type:
-        description: "Pilih skenario browser"
-        required: true
-        type: choice
-        options:
-          - capacity
-          - homepage
-          - product
-          - login
-          - cart
-          - checkout
-          - journey
-        default: capacity
-
-      target_url:
-        description: "Base URL frontend Toko Coquette"
-        required: true
-        type: string
-        default: "http://127.0.0.1:3000"
-
-      max_vus:
-        description: "Batas maksimum browser virtual users (gunakan bertahap)"
-        required: true
-        type: number
-        default: 20
-
-      vus_step:
-        description: "Penambahan browser users setiap tahap"
-        required: true
-        type: number
-        default: 2
-
-      stage_duration:
-        description: "Durasi setiap tahap, contoh 1m atau 30s"
-        required: true
-        type: string
-        default: "1m"
-
-      failure_rate_limit:
-        description: "Hentikan test jika persentase journey gagal melewati nilai ini"
-        required: true
-        type: number
-        default: 10
-
-      recovery_timeout:
-        description: "Batas waktu menunggu homepage pulih, dalam menit"
-        required: true
-        type: number
-        default: 10
 
 permissions:
   contents: read
 
 concurrency:
-  group: k6-browser-capacity-test
+  group: k6-browser-auto-capacity
   cancel-in-progress: false
 
 jobs:
   browser-capacity-test:
-    name: Run ${{ inputs.test_type }} Browser Test
+    name: Progressive browser load and recovery
     runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 120
+    timeout-minutes: 90
+    env:
+      TARGET_URL: http://127.0.0.1:8080
+      MAX_VUS: "50"
+      VUS_STEP: "2"
+      STAGE_DURATION: "30s"
+      FAILURE_RATE_LIMIT: "0.10"
+      RECOVERY_TIMEOUT_MINUTES: "10"
+      TEST_EMAIL: ${{ secrets.K6_TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -75,160 +34,90 @@ jobs:
         with:
           browser: true
 
-      - name: Validate runner and scripts
+      - name: Validate runner, target and credentials
         shell: bash
         run: |
           set -euo pipefail
-
-          command -v k6 >/dev/null
-          command -v kubectl >/dev/null
-          command -v curl >/dev/null
-          command -v node >/dev/null
-
+          command -v k6
+          command -v curl
+          command -v node
           k6 version
-          kubectl get namespace monitoring
-          kubectl get service mimir-monolithic -n monitoring
-
           test -f k6-script-test/browser/config.js
           test -f k6-script-test/browser/journey.js
+          test -f k6-script-test/browser/capacity-test.js
           test -f scripts/generate-browser-report.js
+          if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
+            echo "::error::Tambahkan repository secrets K6_TEST_EMAIL dan K6_TEST_PASSWORD."
+            exit 1
+          fi
+          echo "Checking application at $TARGET_URL"
+          curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
-      - name: Select browser script and validate inputs
-        id: select
+      - name: Prepare results and optional Mimir remote write
+        id: mimir
         shell: bash
-        env:
-          TEST_TYPE: ${{ inputs.test_type }}
-          MAX_VUS: ${{ inputs.max_vus }}
-          VUS_STEP: ${{ inputs.vus_step }}
-          FAILURE_RATE_LIMIT: ${{ inputs.failure_rate_limit }}
         run: |
           set -euo pipefail
-
-          case "$TEST_TYPE" in
-            capacity) SCRIPT="k6-script-test/browser/capacity-test.js" ;;
-            homepage) SCRIPT="k6-script-test/browser/homepage-test.js" ;;
-            product) SCRIPT="k6-script-test/browser/product-test.js" ;;
-            login) SCRIPT="k6-script-test/browser/login-test.js" ;;
-            cart) SCRIPT="k6-script-test/browser/cart-test.js" ;;
-            checkout) SCRIPT="k6-script-test/browser/checkout-test.js" ;;
-            journey) SCRIPT="k6-script-test/browser/user-journey.js" ;;
-            *) echo "Jenis test tidak dikenal"; exit 1 ;;
-          esac
-
-          test -f "$SCRIPT"
-
-          if ! [[ "$MAX_VUS" =~ ^[0-9]+$ ]] || [ "$MAX_VUS" -lt 1 ] || [ "$MAX_VUS" -gt 100 ]; then
-            echo "max_vus harus antara 1 dan 100. Naikkan bertahap setelah mengamati resource."
-            exit 1
+          mkdir -p k6-browser-results
+          if command -v kubectl >/dev/null 2>&1 && kubectl get svc mimir-monolithic -n monitoring >/dev/null 2>&1; then
+            kubectl -n monitoring port-forward svc/mimir-monolithic 19009:9009 \
+              > k6-browser-results/mimir-port-forward.log 2>&1 &
+            echo $! > k6-browser-results/mimir-port-forward.pid
+            for i in $(seq 1 20); do
+              if curl -fsS http://127.0.0.1:19009/ready >/dev/null 2>&1; then
+                echo "enabled=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Mimir port-forward did not become ready; continuing without remote-write."
+          else
+            echo "Mimir service unavailable; continuing without remote-write."
           fi
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
 
-          if ! [[ "$VUS_STEP" =~ ^[0-9]+$ ]] || [ "$VUS_STEP" -lt 1 ] || [ "$VUS_STEP" -gt "$MAX_VUS" ]; then
-            echo "vus_step harus antara 1 dan max_vus."
-            exit 1
-          fi
-
-          if ! [[ "$FAILURE_RATE_LIMIT" =~ ^([1-9]|[1-9][0-9]|100)$ ]]; then
-            echo "failure_rate_limit harus berupa angka 1 sampai 100."
-            exit 1
-          fi
-
-          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
-
-      - name: Start Mimir and run browser test
-        id: browser
+      - name: Run progressive browser capacity test
+        id: k6
         shell: bash
         env:
-          TARGET_URL: ${{ inputs.target_url }}
-          TEST_TYPE: ${{ inputs.test_type }}
-          SCRIPT: ${{ steps.select.outputs.script }}
-          MAX_VUS: ${{ inputs.max_vus }}
-          VUS_STEP: ${{ inputs.vus_step }}
-          STAGE_DURATION: ${{ inputs.stage_duration }}
-          FAILURE_RATE_LIMIT: ${{ inputs.failure_rate_limit }}
-          RECOVERY_TIMEOUT: ${{ inputs.recovery_timeout }}
-
-          TEST_EMAIL: ${{ secrets.K6_TEST_EMAIL }}
-          TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
-
-          PRODUCT_ID: ${{ secrets.K6_PRODUCT_ID }}
+          MIMIR_ENABLED: ${{ steps.mimir.outputs.enabled }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
-
         run: |
-          set -euo pipefail
-
-          mkdir -p k6-browser-results
-
+          set -uo pipefail
           STARTED_AT="$(date --iso-8601=seconds)"
           STARTED_MS="$(date +%s%3N)"
-
-          kubectl -n monitoring port-forward \
-            svc/mimir-monolithic 19009:9009 \
-            > k6-browser-results/mimir-port-forward.log 2>&1 &
-          PORT_FORWARD_PID=$!
-
-          cleanup() {
-            kill "$PORT_FORWARD_PID" 2>/dev/null || true
-            wait "$PORT_FORWARD_PID" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-
-          READY=0
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:19009/ready >/dev/null 2>&1; then
-              READY=1
-              break
-            fi
-            sleep 2
-          done
-
-          if [ "$READY" -ne 1 ]; then
-            echo "Mimir tidak dapat dijangkau."
-            cat k6-browser-results/mimir-port-forward.log
-            exit 1
-          fi
-
-          export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
-          export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
-          export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
-          export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
-          export K6_PROMETHEUS_RW_LABELS="test_type=${TEST_TYPE},test_run=${GITHUB_RUN_ID},environment=coquette"
-
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
-          export TEST_EMAIL="${TEST_EMAIL:-}"
-          export TEST_PASSWORD="${TEST_PASSWORD:-}"
-          export PRODUCT_ID="${PRODUCT_ID:-}"
-          export MAX_VUS VUS_STEP STAGE_DURATION
-          export FAILURE_RATE_LIMIT_DECIMAL="$(awk "BEGIN {print ${FAILURE_RATE_LIMIT}/100}")"
+          export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT
+          export TEST_EMAIL TEST_PASSWORD
+          K6_ARGS=()
+          if [ "$MIMIR_ENABLED" = "true" ]; then
+            export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
+            export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
+            export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
+            export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
+            export K6_PROMETHEUS_RW_LABELS="test_type=capacity,test_run=${GITHUB_RUN_ID},environment=coquette"
+            K6_ARGS=(-o experimental-prometheus-rw)
+          fi
 
-          # The capacity scenario uses a read-heavy journey. It does not submit orders.
           set +e
-          k6 run \
-            -o experimental-prometheus-rw \
+          k6 run "${K6_ARGS[@]}" \
             --tag testid="github-${GITHUB_RUN_ID}" \
             --tag application="toko-coquette" \
-            --tag test_category="browser" \
-            --env BASE_URL="$BASE_URL" \
-            --env TEST_EMAIL="$TEST_EMAIL" \
-            --env TEST_PASSWORD="$TEST_PASSWORD" \
-            --env MAX_VUS="$MAX_VUS" \
-            --env VUS_STEP="$VUS_STEP" \
-            --env STAGE_DURATION="$STAGE_DURATION" \
-            --env FAILURE_RATE_LIMIT="$(awk "BEGIN {print ${FAILURE_RATE_LIMIT}/100}")" \
-            --summary-export "k6-browser-results/capacity-summary.json" \
-            "$SCRIPT" \
+            --summary-export k6-browser-results/capacity-summary.json \
+            k6-script-test/browser/capacity-test.js \
             2>&1 | tee k6-browser-results/k6-console.log
-
           K6_EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
+          FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
 
           cat > k6-browser-results/run-metadata.json <<EOF
           {
-            "test_type": "$TEST_TYPE",
+            "test_type": "capacity",
             "target_url": "$TARGET_URL",
             "started_at": "$STARTED_AT",
             "started_at_ms": $STARTED_MS,
@@ -237,66 +126,109 @@ jobs:
             "max_vus": $MAX_VUS,
             "vus_step": $VUS_STEP,
             "stage_duration": "$STAGE_DURATION",
-            "failure_rate_limit": $(awk "BEGIN {print ${FAILURE_RATE_LIMIT}/100}"),
-            "recovery_timeout": "$RECOVERY_TIMEOUT minutes",
-            "k6_exit_code": $K6_EXIT_CODE
+            "failure_rate_limit": "$FAILURE_RATE_LIMIT",
+            "recovery_timeout": "$RECOVERY_TIMEOUT_MINUTES minutes",
+            "k6_exit_code": $K6_EXIT_CODE,
+            "run_number": "$GITHUB_RUN_NUMBER"
           }
           EOF
-
+          echo "$K6_EXIT_CODE" > k6-browser-results/k6-exit-code.txt
+          echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
+          echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
+          exit 0
 
-          # Recovery measurement: wait until homepage responds with HTTP 2xx.
-          # This records web availability recovery, not full backend recovery.
-          RECOVERY_START_MS="$(date +%s%3N)"
+      - name: Measure application recovery after load stops
+        if: always() && steps.k6.outcome != 'skipped'
+        shell: bash
+        env:
+          LOAD_FINISHED_MS: ${{ steps.k6.outputs.load_finished_ms }}
+        run: |
+          set -euo pipefail
+          mkdir -p k6-browser-results
+          START_MS="${LOAD_FINISHED_MS:-$(date +%s%3N)}"
+          DEADLINE=$(( $(date +%s) + RECOVERY_TIMEOUT_MINUTES * 60 ))
+          CONSECUTIVE=0
           RECOVERED=false
           RECOVERED_AT_MS=0
-          DEADLINE=$(( $(date +%s) + RECOVERY_TIMEOUT * 60 ))
+          PROBE_LOG="k6-browser-results/recovery-probes.csv"
+          echo "timestamp,http_status,result" > "$PROBE_LOG"
 
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-            if curl -fsS --max-time 10 "$TARGET_URL" -o /dev/null; then
-              RECOVERED=true
-              RECOVERED_AT_MS="$(date +%s%3N)"
-              break
+            NOW="$(date +%s%3N)"
+            CODE="$(curl -sS -L --max-time 10 -o /dev/null -w '%{http_code}' "$TARGET_URL" || true)"
+            if [[ "$CODE" =~ ^2[0-9][0-9]$ ]]; then
+              CONSECUTIVE=$((CONSECUTIVE + 1))
+              echo "$NOW,$CODE,success" >> "$PROBE_LOG"
+              if [ "$CONSECUTIVE" -ge 3 ]; then
+                RECOVERED=true
+                RECOVERED_AT_MS="$NOW"
+                break
+              fi
+            else
+              CONSECUTIVE=0
+              echo "$NOW,$CODE,failure" >> "$PROBE_LOG"
             fi
             sleep 5
           done
 
-          cat > k6-browser-results/recovery.json <<EOF
-          {
-            "recovered": $RECOVERED,
-            "recovery_started_at_ms": $RECOVERY_START_MS,
-            "recovered_at_ms": $RECOVERED_AT_MS
-          }
-          EOF
-
-          # Keep the workflow result failed if k6 failed its thresholds.
-          if [ "$K6_EXIT_CODE" -ne 0 ]; then
-            echo "k6 berhenti dengan exit code $K6_EXIT_CODE (threshold atau runtime failure)."
+          if [ "$RECOVERED" = true ]; then
+            RECOVERY_DURATION_MS=$((RECOVERED_AT_MS - START_MS))
+          else
+            RECOVERY_DURATION_MS=""
           fi
 
-      - name: Generate user-friendly HTML report
+          FIRST_FAILURE="$(cat k6-browser-results/first-failure-timestamp-ms.txt 2>/dev/null || true)"
+          python3 - "$RECOVERED" "$START_MS" "$RECOVERED_AT_MS" "$RECOVERY_DURATION_MS" "$FIRST_FAILURE" <<'PY'
+          import json,sys,datetime
+          recovered,start,at,duration,first=sys.argv[1:]
+          def iso(ms):
+              return datetime.datetime.fromtimestamp(int(ms)/1000,datetime.timezone.utc).isoformat() if ms and ms.isdigit() and int(ms)>0 else None
+          obj={
+            "recovered": recovered=="true",
+            "recovery_started_at_ms": int(start),
+            "recovered_at_ms": int(at) if at else None,
+            "recovery_duration_ms": int(duration) if duration else None,
+            "recovery_started_at": iso(start),
+            "recovered_at": iso(at),
+            "first_failure_at_ms": int(first) if first.isdigit() else None,
+            "first_failure_at": iso(first),
+            "probe_interval_seconds": 5,
+            "required_consecutive_successes": 3
+          }
+          with open("k6-browser-results/recovery.json","w") as f: json.dump(obj,f,indent=2)
+          PY
+          if [ "$RECOVERED" != true ]; then
+            echo "::warning::Homepage did not recover within ${RECOVERY_TIMEOUT_MINUTES} minutes."
+          fi
+
+      - name: Generate HTML report
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f k6-browser-results/capacity-summary.json ]; then
-            node scripts/generate-browser-report.js k6-browser-results
-          else
-            echo "Summary k6 tidak ditemukan; HTML report tidak dapat dibuat."
-          fi
+          node scripts/generate-browser-report.js k6-browser-results
 
-      - name: Upload browser test report and raw results
+      - name: Upload report and raw results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: toko-coquette-browser-report-${{ github.run_number }}
+          name: toko-coquette-browser-capacity-${{ github.run_number }}
           path: k6-browser-results/
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Fail workflow if k6 threshold failed
-        if: steps.browser.outputs.k6_exit_code != '0'
+      - name: Stop Mimir port-forward
+        if: always()
         shell: bash
         run: |
-          echo "Browser performance test gagal melewati threshold."
+          if [ -f k6-browser-results/mimir-port-forward.pid ]; then
+            kill "$(cat k6-browser-results/mimir-port-forward.pid)" 2>/dev/null || true
+          fi
+
+      - name: Mark workflow failed when K6 threshold/runtime failed
+        if: steps.k6.outputs.k6_exit_code != '0'
+        shell: bash
+        run: |
+          echo "K6 reported a threshold or runtime failure. See uploaded report."
           exit 1

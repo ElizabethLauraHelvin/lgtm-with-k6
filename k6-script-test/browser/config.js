@@ -1,44 +1,24 @@
-import { browser } from 'k6/browser';
-
-export const BASE_URL = (__ENV.BASE_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
+export const BASE_URL = (__ENV.BASE_URL || 'http://127.0.0.1:8080').replace(/\/+$/, '');
 export const TEST_EMAIL = __ENV.TEST_EMAIL || '';
 export const TEST_PASSWORD = __ENV.TEST_PASSWORD || '';
 
-export const PATHS = {
-  home: __ENV.HOME_PATH || '/',
-  products: __ENV.PRODUCTS_PATH || '/products',
-  login: __ENV.LOGIN_PATH || '/login',
-  cart: __ENV.CART_PATH || '/cart',
-  checkout: __ENV.CHECKOUT_PATH || '/checkout',
-  productDetail: __ENV.PRODUCT_DETAIL_PATH || '',
-};
-
 export const SELECTORS = {
-  productCard: __ENV.PRODUCT_CARD_SELECTOR || '[data-testid="product-card"]',
-  productDetail: __ENV.PRODUCT_DETAIL_SELECTOR || '[data-testid="product-detail"]',
-  addToCart: __ENV.ADD_TO_CART_SELECTOR || '[data-testid="add-to-cart"]',
-  cartItem: __ENV.CART_ITEM_SELECTOR || '[data-testid="cart-item"]',
-  email: __ENV.EMAIL_SELECTOR || 'input[name="email"]',
-  password: __ENV.PASSWORD_SELECTOR || 'input[name="password"]',
-  loginSubmit: __ENV.LOGIN_SUBMIT_SELECTOR || 'button[type="submit"]',
-  dashboard: __ENV.DASHBOARD_SELECTOR || '[data-testid="dashboard"]',
-  checkoutButton: __ENV.CHECKOUT_BUTTON_SELECTOR || '[data-testid="checkout-button"]',
-  checkoutReview: __ENV.CHECKOUT_REVIEW_SELECTOR || '[data-testid="checkout-review"]',
+  loginOpen: '#auth button',
+  email: '#a_email',
+  password: '#a_pass',
+  loginSubmit: '#a_go',
+  loggedIn: '#auth .hi',
+  productCards: '#app .grid .card',
+  productImage: '#app .grid .card .img',
+  addToCart: '#app .grid .card .btn',
+  cartOpen: 'header button.btn',
+  cartDrawer: '#drawer.show',
+  cartItem: '#drawer .items .row',
+  checkoutButton: '#drawer button.btn',
+  checkoutModal: '#ov.show #modal',
+  checkoutShipping: '#f_s',
+  checkoutPayment: '#f_p',
 };
 
-export function browserOptions() {
-  return {
-    scenarios: {
-      browser_test: {
-        executor: 'shared-iterations',
-        vus: 1,
-        iterations: 1,
-        options: { browser: { type: 'chromium' } },
-      },
-    },
-  };
-}
-
-export async function newPage() {
-  return await browser.newPage();
-}
+export const THINK_TIME_SECONDS = Math.max(0, Number(__ENV.THINK_TIME_SECONDS || 1));
+export const REQUEST_TIMEOUT = __ENV.BROWSER_TIMEOUT || '30s';

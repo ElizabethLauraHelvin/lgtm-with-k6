@@ -1,30 +1,27 @@
 import { browser } from 'k6/browser';
-import { Rate, Trend, Counter } from 'k6/metrics';
 import { runJourney } from './journey.js';
 
-const maxVus = Math.max(1, Number(__ENV.MAX_VUS || 20));
-const vusStep = Math.max(1, Number(__ENV.VUS_STEP || 2));
-const stageDuration = __ENV.STAGE_DURATION || '1m';
-const failureRateLimit = Math.min(1, Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10)));
+const maxVus = Math.max(2, Math.min(50, Number(__ENV.MAX_VUS || 50)));
+const step = Math.max(1, Math.min(maxVus, Number(__ENV.VUS_STEP || 2)));
+const stageDuration = __ENV.STAGE_DURATION || '30s';
+const failureRateLimit = Math.min(0.5, Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10)));
 
 const stages = [];
-for (let target = vusStep; target < maxVus; target += vusStep) {
+for (let target = step; target < maxVus; target += step) {
   stages.push({ duration: stageDuration, target });
 }
 stages.push({ duration: stageDuration, target: maxVus });
-stages.push({ duration: '30s', target: 0 });
+stages.push({ duration: '10s', target: 0 });
 
 export const options = {
   scenarios: {
     browser_capacity: {
       executor: 'ramping-vus',
-      startVUs: 1,
+      startVUs: 0,
       stages,
-      gracefulRampDown: '15s',
-      gracefulStop: '30s',
-      options: {
-        browser: { type: 'chromium' },
-      },
+      gracefulRampDown: '10s',
+      gracefulStop: '20s',
+      options: { browser: { type: 'chromium' } },
     },
   },
   thresholds: {
@@ -43,4 +40,4 @@ export default async function () {
   } finally {
     await page.close();
   }
-};
+}
