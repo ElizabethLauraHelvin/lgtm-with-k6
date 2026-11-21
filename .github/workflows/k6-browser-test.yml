@@ -40,7 +40,7 @@ jobs:
     env:
       TARGET_URL: ${{ inputs.target_url }}
       TEST_TYPE: ${{ inputs.test_type }}
-      MAX_VUS: 10"
+      MAX_VUS: "10"
       VUS_STEP: "2"
       STAGE_DURATION: "30s"
       FAILURE_RATE_LIMIT: "0.10"
@@ -279,7 +279,6 @@ jobs:
 
           data = dict(zip(keys, sys.argv[1:]))
 
-          
           for key in [
               "started_at_ms",
               "finished_at_ms",
@@ -289,7 +288,6 @@ jobs:
               "run_number"
           ]:
               data[key] = int(str(data[key]).strip().strip('"').strip("'"))
-
 
           with open("/tmp/k6-run-metadata.json", "w") as f:
               json.dump(data, f, indent=2)
@@ -383,8 +381,7 @@ jobs:
           fi
 
       # ==========================================
-      # 9. CONVERT K6 JSON TO JMETER JTL
-      # FIXED FORMAT
+      # 9. COPY RAW JSON AND CONVERT TO JTL
       # ==========================================
       - name: Convert K6 results to JMeter JTL Fixed Format
         if: always()
@@ -393,11 +390,19 @@ jobs:
           set -euo pipefail
 
           RAW_FILE="/tmp/k6-browser-raw.json"
+          RAW_COPY="k6-browser-results/k6-${TEST_TYPE}-raw.json"
 
           if [ ! -f "$RAW_FILE" ]; then
             echo "::error::K6 raw JSON was not generated."
             exit 1
           fi
+
+          # Preserve original K6 raw JSON for debugging
+          cp "$RAW_FILE" "$RAW_COPY"
+
+          echo "Raw JSON copied to: $RAW_COPY"
+          echo "Raw JSON size:"
+          du -h "$RAW_COPY"
 
           node <<'NODE'
           const fs = require('fs');
@@ -550,9 +555,9 @@ jobs:
           NODE
 
       # ==========================================
-      # 10. UPLOAD JTL AND CAPACITY SUMMARY
+      # 10. UPLOAD JTL, SUMMARY, RECOVERY AND RAW JSON
       # ==========================================
-      - name: Upload K6 JTL and Capacity Summary
+      - name: Upload K6 Results and Raw JSON
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -561,6 +566,7 @@ jobs:
             k6-browser-results/*-results-fixed.jtl
             k6-browser-results/*-capacity-summary.json
             k6-browser-results/*-recovery.json
+            k6-browser-results/*-raw.json
           if-no-files-found: warn
           retention-days: 30
 
