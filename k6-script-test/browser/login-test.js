@@ -58,7 +58,6 @@ export const options = {
     ],
   },
 
-  maxVUs: 100,
 };
 
 export default async function () {

@@ -279,6 +279,7 @@ jobs:
 
           data = dict(zip(keys, sys.argv[1:]))
 
+          
           for key in [
               "started_at_ms",
               "finished_at_ms",
@@ -287,7 +288,8 @@ jobs:
               "k6_exit_code",
               "run_number"
           ]:
-              data[key] = int(data[key])
+              data[key] = int(str(data[key]).strip().strip('"').strip("'"))
+
 
           with open("/tmp/k6-run-metadata.json", "w") as f:
               json.dump(data, f, indent=2)
