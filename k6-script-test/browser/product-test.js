@@ -1,20 +1,22 @@
 
 import { browser } from 'k6/browser';
+import http from 'k6/http';
 import { Rate } from 'k6/metrics';
+import { exec } from 'k6/execution';
 import { runJourney } from './journey.js';
 import { sleep } from 'k6';
 
-// Batas toleransi kegagalan browser.
+const BASE_URL = (__ENV.BASE_URL || 'http://127.0.0.1:8080')
+  .replace(/\/$/, '');
+
 const failureRateLimit = Math.min(
   0.5,
   Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10))
 );
 
-// Recovery maksimal 1 kali.
 const maxRecoveryAttempts = 1;
 const recoveryDelaySeconds = 3;
 
-// Mengukur keberhasilan sesi browser setelah recovery.
 const browserSessionSuccess = new Rate('browser_session_success');
 
 export const options = {
@@ -23,7 +25,6 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 1,
 
-      // Maksimal 10 VU.
       stages: [
         { duration: '1m', target: 1 },
         { duration: '1m', target: 3 },
@@ -51,7 +52,32 @@ export const options = {
   },
 };
 
+// Menghasilkan tepat satu HTTP error untuk pengujian JMeter.
+function generateOneTestError() {
+  if (
+    exec.vu.idInTest === 1 &&
+    exec.vu.iterationInInstance === 0
+  ) {
+    const response = http.get(
+      `${BASE_URL}/api/__k6_intentional_error__`,
+      {
+        tags: {
+          name: 'K6 Intentional Error Test',
+          test_type: 'intentional_error',
+        },
+      }
+    );
+
+    console.log(
+      `INTENTIONAL_ERROR_TEST status=${response.status}`
+    );
+  }
+}
+
 export default async function () {
+  // Hanya menghasilkan satu request error selama test.
+  generateOneTestError();
+
   let sessionOk = false;
 
   for (let attempt = 0; attempt <= maxRecoveryAttempts; attempt++) {
@@ -62,11 +88,8 @@ export default async function () {
         `PRODUCT_ATTEMPT attempt=${attempt + 1} max_attempts=${maxRecoveryAttempts + 1}`
       );
 
-      // Membuat browser page baru.
       page = await browser.newPage();
 
-      // Menjalankan product journey.
-      // Metrics journey dicatat sebagai hasil akhir sesi, bukan tiap percobaan.
       await runJourney(page, 'product', {
         recordMetrics: false,
       });
@@ -86,7 +109,6 @@ export default async function () {
       }
 
     } finally {
-      // Menutup page setiap percobaan.
       if (page) {
         try {
           await page.close();
@@ -99,14 +121,12 @@ export default async function () {
       }
     }
 
-    // Menunggu sebelum melakukan recovery.
     if (!sessionOk && attempt < maxRecoveryAttempts) {
       console.warn(`PRODUCT_RECOVERY_WAIT seconds=${recoveryDelaySeconds}`);
       sleep(recoveryDelaySeconds);
     }
   }
 
-  // Mencatat hasil akhir setelah semua percobaan.
   browserSessionSuccess.add(sessionOk);
 
   if (!sessionOk) {
