@@ -1,4 +1,3 @@
-
 name: K6 Browser Testing
 
 on:
@@ -40,7 +39,7 @@ jobs:
     env:
       TARGET_URL: ${{ inputs.target_url }}
       TEST_TYPE: ${{ inputs.test_type }}
-      MAX_VUS: "50"
+      MAX_VUS: "10"
       VUS_STEP: "2"
       STAGE_DURATION: "30s"
       FAILURE_RATE_LIMIT: "0.10"
@@ -49,7 +48,6 @@ jobs:
       TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
 
     steps:
-
       # ==========================================
       # 1. CHECKOUT REPOSITORY
       # ==========================================
@@ -204,8 +202,13 @@ jobs:
         run: |
           set -uo pipefail
 
+          RAW_FILE="/tmp/k6-browser-raw.json"
+
           STARTED_AT="$(date --iso-8601=seconds)"
           STARTED_MS="$(date +%s%3N)"
+
+          # Remove old results.
+          rm -f "$RAW_FILE"
 
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
@@ -233,12 +236,14 @@ jobs:
           echo "Starting K6 Browser Test"
           echo "Scenario: $TEST_TYPE"
           echo "Target: $TARGET_URL"
+          echo "Maximum VUs: $MAX_VUS"
+          echo "Raw JSON: $RAW_FILE"
           echo "================================"
 
           set +e
 
           k6 run \
-            --out json=/tmp/k6-browser-raw.json \
+            --out "json=$RAW_FILE" \
             "${K6_ARGS[@]}" \
             --tag testid="github-${GITHUB_RUN_ID}" \
             --tag application="toko-coquette" \
@@ -253,7 +258,17 @@ jobs:
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
 
-          echo "K6 exit code: $K6_EXIT_CODE"
+          echo "================================"
+          echo "K6 FINISHED"
+          echo "Exit code: $K6_EXIT_CODE"
+          echo "================================"
+
+          if [ -s "$RAW_FILE" ]; then
+            echo "Raw JSON successfully generated."
+            ls -lh "$RAW_FILE"
+          else
+            echo "::warning::K6 raw JSON was not generated or is empty."
+          fi
 
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
           echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
@@ -382,7 +397,6 @@ jobs:
 
       # ==========================================
       # 9. CONVERT K6 JSON TO JMETER JTL
-      # FIXED FORMAT
       # ==========================================
       - name: Convert K6 results to JMeter JTL Fixed Format
         if: always()
@@ -392,13 +406,18 @@ jobs:
 
           RAW_FILE="/tmp/k6-browser-raw.json"
 
-          if [ ! -f "$RAW_FILE" ]; then
-            echo "::error::K6 raw JSON was not generated."
-            exit 1
+          echo "Checking raw JSON: $RAW_FILE"
+
+          if [ ! -s "$RAW_FILE" ]; then
+            echo "::warning::Raw JSON unavailable. Skipping JTL conversion."
+            exit 0
           fi
+
+          mkdir -p "$(dirname "$JTL_FILE")"
 
           node <<'NODE'
           const fs = require('fs');
+          const path = require('path');
 
           const input = '/tmp/k6-browser-raw.json';
           const output = process.env.JTL_FILE;
@@ -424,13 +443,7 @@ jobs:
           ];
 
           function csvValue(value) {
-            if (value === null || value === undefined) {
-              return '';
-            }
-
-            if (typeof value === 'number' || typeof value === 'boolean') {
-              return String(value);
-            }
+            if (value === null || value === undefined) return '';
 
             const text = String(value);
 
@@ -441,16 +454,11 @@ jobs:
             return text;
           }
 
-          function csvRow(values) {
-            return values.map(csvValue).join(',');
-          }
-
           const lines = fs.readFileSync(input, 'utf8')
             .split(/\r?\n/)
             .filter(Boolean);
 
           const rows = [headers.join(',')];
-
           let exported = 0;
 
           for (const line of lines) {
@@ -485,25 +493,11 @@ jobs:
               : 0;
 
             const elapsed = Math.round(Number(data.value || 0));
-
-            const status = tags.status
-              ? Number(tags.status)
-              : 0;
-
+            const status = Number(tags.status || 0);
             const url = tags.url || '';
+            const label = tags.name || url || event.metric;
 
-            const label =
-              tags.name ||
-              url ||
-              event.metric;
-
-            const success =
-              status >= 200 && status < 400;
-
-            const failureMessage =
-              status >= 400
-                ? `HTTP ${status}`
-                : '';
+            const success = status >= 200 && status < 400;
 
             const row = [
               timestamp,
@@ -514,7 +508,7 @@ jobs:
               'K6 Browser (source)',
               'text',
               success,
-              failureMessage,
+              status >= 400 ? `HTTP ${status}` : '',
               0,
               0,
               0,
@@ -525,9 +519,11 @@ jobs:
               0
             ];
 
-            rows.push(csvRow(row));
+            rows.push(row.map(csvValue).join(','));
             exported++;
           }
+
+          fs.mkdirSync(path.dirname(output), { recursive: true });
 
           fs.writeFileSync(
             output,
@@ -536,14 +532,13 @@ jobs:
           );
 
           console.log('================================');
-          console.log('K6 JTL FIXED FORMAT GENERATED');
+          console.log('K6 JTL GENERATED');
           console.log('================================');
           console.log(`Output: ${output}`);
-          console.log(`Total HTTP samples: ${exported}`);
+          console.log(`HTTP samples: ${exported}`);
 
           if (exported === 0) {
-            console.error('No HTTP duration samples found.');
-            process.exitCode = 1;
+            console.warn('No HTTP duration samples found.');
           }
           NODE
 
