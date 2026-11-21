@@ -16,7 +16,6 @@ export const options = {
       ],
 
       gracefulRampDown: '10s',
-      gracefulStop: '15s',
 
       options: {
         browser: {
@@ -33,6 +32,4 @@ export const options = {
       delayAbortEval: '30s',
     }],
   },
-
-  maxVUs: 10,
 };
