@@ -1,22 +1,42 @@
-name: K6 Browser Auto Capacity and Recovery Test
+name: K6 Browser Testing
 
 on:
   workflow_dispatch:
+    inputs:
+      test_type:
+        description: "Pilih skenario browser yang ingin dijalankan"
+        required: true
+        type: choice
+        options:
+          - capacity
+          - homepage
+          - product
+          - login
+          - cart
+          - checkout
+          - journey
+        default: capacity
+      target_url:
+        description: "Base URL frontend Toko Coquette"
+        required: true
+        type: string
+        default: "http://127.0.0.1:8080"
 
 permissions:
   contents: read
 
 concurrency:
-  group: k6-browser-auto-capacity
+  group: k6-browser-${{ inputs.test_type }}
   cancel-in-progress: false
 
 jobs:
-  browser-capacity-test:
-    name: Progressive browser load and recovery
+  browser-test:
+    name: Run ${{ inputs.test_type }} browser test
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 90
     env:
-      TARGET_URL: http://127.0.0.1:8080
+      TARGET_URL: ${{ inputs.target_url }}
+      TEST_TYPE: ${{ inputs.test_type }}
       MAX_VUS: "50"
       VUS_STEP: "2"
       STAGE_DURATION: "30s"
@@ -34,7 +54,7 @@ jobs:
         with:
           browser: true
 
-      - name: Validate runner, target and credentials
+      - name: Validate runner and application
         shell: bash
         run: |
           set -euo pipefail
@@ -42,23 +62,48 @@ jobs:
           command -v curl
           command -v node
           k6 version
-          test -f k6-script-test/browser/config.js
-          test -f k6-script-test/browser/journey.js
-          test -f k6-script-test/browser/capacity-test.js
-          test -f scripts/generate-browser-report.js
-          if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
-            echo "::error::Tambahkan repository secrets K6_TEST_EMAIL dan K6_TEST_PASSWORD."
-            exit 1
-          fi
-          echo "Checking application at $TARGET_URL"
+          test -f "k6-script-test/browser/config.js"
+          test -f "k6-script-test/browser/journey.js"
+          test -f "scripts/generate-browser-report.js"
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
-      - name: Prepare results and optional Mimir remote write
+          case "$TEST_TYPE" in
+            capacity|login|cart|checkout|journey)
+              if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
+                echo "::error::Skenario $TEST_TYPE memerlukan repository secrets K6_TEST_EMAIL dan K6_TEST_PASSWORD."
+                exit 1
+              fi
+              ;;
+            homepage|product) ;;
+            *)
+              echo "::error::Skenario tidak dikenal: $TEST_TYPE"
+              exit 1
+              ;;
+          esac
+
+      - name: Select script and prepare results
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$TEST_TYPE" in
+            capacity) SCRIPT="k6-script-test/browser/capacity-test.js" ;;
+            homepage) SCRIPT="k6-script-test/browser/homepage-test.js" ;;
+            product) SCRIPT="k6-script-test/browser/product-test.js" ;;
+            login) SCRIPT="k6-script-test/browser/login-test.js" ;;
+            cart) SCRIPT="k6-script-test/browser/cart-test.js" ;;
+            checkout) SCRIPT="k6-script-test/browser/checkout-test.js" ;;
+            journey) SCRIPT="k6-script-test/browser/journey-test.js" ;;
+          esac
+          test -f "$SCRIPT"
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          mkdir -p k6-browser-results
+
+      - name: Start Mimir port-forward when available
         id: mimir
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p k6-browser-results
           if command -v kubectl >/dev/null 2>&1 && kubectl get svc mimir-monolithic -n monitoring >/dev/null 2>&1; then
             kubectl -n monitoring port-forward svc/mimir-monolithic 19009:9009 \
               > k6-browser-results/mimir-port-forward.log 2>&1 &
@@ -70,16 +115,17 @@ jobs:
               fi
               sleep 2
             done
-            echo "Mimir port-forward did not become ready; continuing without remote-write."
+            echo "Mimir not ready; continuing without remote write."
           else
-            echo "Mimir service unavailable; continuing without remote-write."
+            echo "kubectl/Mimir unavailable; continuing without remote write."
           fi
           echo "enabled=false" >> "$GITHUB_OUTPUT"
 
-      - name: Run progressive browser capacity test
+      - name: Run selected browser scenario
         id: k6
         shell: bash
         env:
+          SCRIPT: ${{ steps.select.outputs.script }}
           MIMIR_ENABLED: ${{ steps.mimir.outputs.enabled }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -87,17 +133,18 @@ jobs:
           set -uo pipefail
           STARTED_AT="$(date --iso-8601=seconds)"
           STARTED_MS="$(date +%s%3N)"
+
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
-          export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT
-          export TEST_EMAIL TEST_PASSWORD
+          export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
+
           K6_ARGS=()
           if [ "$MIMIR_ENABLED" = "true" ]; then
             export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
             export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
             export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
             export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
-            export K6_PROMETHEUS_RW_LABELS="test_type=capacity,test_run=${GITHUB_RUN_ID},environment=coquette"
+            export K6_PROMETHEUS_RW_LABELS="test_type=${TEST_TYPE},test_run=${GITHUB_RUN_ID},environment=coquette"
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
@@ -105,9 +152,9 @@ jobs:
           k6 run "${K6_ARGS[@]}" \
             --tag testid="github-${GITHUB_RUN_ID}" \
             --tag application="toko-coquette" \
+            --tag test_category="browser" \
             --summary-export k6-browser-results/capacity-summary.json \
-            k6-script-test/browser/capacity-test.js \
-            2>&1 | tee k6-browser-results/k6-console.log
+            "$SCRIPT" 2>&1 | tee k6-browser-results/k6-console.log
           K6_EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
@@ -115,51 +162,39 @@ jobs:
           FINISHED_MS="$(date +%s%3N)"
           FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
 
-          cat > k6-browser-results/run-metadata.json <<EOF
-          {
-            "test_type": "capacity",
-            "target_url": "$TARGET_URL",
-            "started_at": "$STARTED_AT",
-            "started_at_ms": $STARTED_MS,
-            "finished_at": "$FINISHED_AT",
-            "finished_at_ms": $FINISHED_MS,
-            "max_vus": $MAX_VUS,
-            "vus_step": $VUS_STEP,
-            "stage_duration": "$STAGE_DURATION",
-            "failure_rate_limit": "$FAILURE_RATE_LIMIT",
-            "recovery_timeout": "$RECOVERY_TIMEOUT_MINUTES minutes",
-            "k6_exit_code": $K6_EXIT_CODE,
-            "run_number": "$GITHUB_RUN_NUMBER"
-          }
-          EOF
-          echo "$K6_EXIT_CODE" > k6-browser-results/k6-exit-code.txt
+          python3 - "$TEST_TYPE" "$TARGET_URL" "$STARTED_AT" "$STARTED_MS" "$FINISHED_AT" "$FINISHED_MS" "$MAX_VUS" "$VUS_STEP" "$STAGE_DURATION" "$FAILURE_RATE_LIMIT" "$K6_EXIT_CODE" "$GITHUB_RUN_NUMBER" <<'PY'
+          import json,sys
+          keys=["test_type","target_url","started_at","started_at_ms","finished_at","finished_at_ms","max_vus","vus_step","stage_duration","failure_rate_limit","k6_exit_code","run_number"]
+          vals=sys.argv[1:]
+          obj=dict(zip(keys,vals))
+          for k in ["started_at_ms","finished_at_ms","max_vus","vus_step","k6_exit_code","run_number"]:
+              obj[k]=int(obj[k])
+          with open("k6-browser-results/run-metadata.json","w") as f: json.dump(obj,f,indent=2)
+          PY
           echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
           echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Measure application recovery after load stops
-        if: always() && steps.k6.outcome != 'skipped'
+      - name: Measure homepage recovery after capacity test
+        if: always() && inputs.test_type == 'capacity' && steps.k6.outcome != 'skipped'
         shell: bash
-        env:
-          LOAD_FINISHED_MS: ${{ steps.k6.outputs.load_finished_ms }}
         run: |
           set -euo pipefail
-          mkdir -p k6-browser-results
-          START_MS="${LOAD_FINISHED_MS:-$(date +%s%3N)}"
+          START_MS="${{ steps.k6.outputs.load_finished_ms }}"
+          START_MS="${START_MS:-$(date +%s%3N)}"
           DEADLINE=$(( $(date +%s) + RECOVERY_TIMEOUT_MINUTES * 60 ))
           CONSECUTIVE=0
           RECOVERED=false
           RECOVERED_AT_MS=0
-          PROBE_LOG="k6-browser-results/recovery-probes.csv"
-          echo "timestamp,http_status,result" > "$PROBE_LOG"
+          echo "timestamp,http_status,result" > k6-browser-results/recovery-probes.csv
 
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
             NOW="$(date +%s%3N)"
             CODE="$(curl -sS -L --max-time 10 -o /dev/null -w '%{http_code}' "$TARGET_URL" || true)"
             if [[ "$CODE" =~ ^2[0-9][0-9]$ ]]; then
               CONSECUTIVE=$((CONSECUTIVE + 1))
-              echo "$NOW,$CODE,success" >> "$PROBE_LOG"
+              echo "$NOW,$CODE,success" >> k6-browser-results/recovery-probes.csv
               if [ "$CONSECUTIVE" -ge 3 ]; then
                 RECOVERED=true
                 RECOVERED_AT_MS="$NOW"
@@ -167,7 +202,7 @@ jobs:
               fi
             else
               CONSECUTIVE=0
-              echo "$NOW,$CODE,failure" >> "$PROBE_LOG"
+              echo "$NOW,$CODE,failure" >> k6-browser-results/recovery-probes.csv
             fi
             sleep 5
           done
@@ -184,18 +219,13 @@ jobs:
           recovered,start,at,duration,first=sys.argv[1:]
           def iso(ms):
               return datetime.datetime.fromtimestamp(int(ms)/1000,datetime.timezone.utc).isoformat() if ms and ms.isdigit() and int(ms)>0 else None
-          obj={
-            "recovered": recovered=="true",
-            "recovery_started_at_ms": int(start),
-            "recovered_at_ms": int(at) if at else None,
-            "recovery_duration_ms": int(duration) if duration else None,
-            "recovery_started_at": iso(start),
-            "recovered_at": iso(at),
-            "first_failure_at_ms": int(first) if first.isdigit() else None,
-            "first_failure_at": iso(first),
-            "probe_interval_seconds": 5,
-            "required_consecutive_successes": 3
-          }
+          obj={"recovered":recovered=="true","recovery_started_at_ms":int(start),
+               "recovered_at_ms":int(at) if at else None,
+               "recovery_duration_ms":int(duration) if duration else None,
+               "recovery_started_at":iso(start),"recovered_at":iso(at),
+               "first_failure_at_ms":int(first) if first.isdigit() else None,
+               "first_failure_at":iso(first),"probe_interval_seconds":5,
+               "required_consecutive_successes":3}
           with open("k6-browser-results/recovery.json","w") as f: json.dump(obj,f,indent=2)
           PY
           if [ "$RECOVERED" != true ]; then
@@ -213,7 +243,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: toko-coquette-browser-capacity-${{ github.run_number }}
+          name: toko-coquette-${{ inputs.test_type }}-report-${{ github.run_number }}
           path: k6-browser-results/
           if-no-files-found: warn
           retention-days: 30
@@ -226,9 +256,9 @@ jobs:
             kill "$(cat k6-browser-results/mimir-port-forward.pid)" 2>/dev/null || true
           fi
 
-      - name: Mark workflow failed when K6 threshold/runtime failed
+      - name: Mark workflow failed when K6 failed
         if: steps.k6.outputs.k6_exit_code != '0'
         shell: bash
         run: |
-          echo "K6 reported a threshold or runtime failure. See uploaded report."
+          echo "K6 failed. See uploaded artifact."
           exit 1
