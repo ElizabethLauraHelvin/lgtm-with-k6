@@ -1,3 +1,4 @@
+
 name: K6 Browser Testing
 
 on:
@@ -34,6 +35,7 @@ jobs:
     name: Run ${{ inputs.test_type }} browser test
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 90
+
     env:
       TARGET_URL: ${{ inputs.target_url }}
       TEST_TYPE: ${{ inputs.test_type }}
@@ -67,9 +69,11 @@ jobs:
           command -v curl
           command -v node
           k6 version
+
           test -f "k6-script-test/browser/config.js"
           test -f "k6-script-test/browser/journey.js"
           test -f "scripts/generate-browser-report.js"
+
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
           case "$TEST_TYPE" in
@@ -91,6 +95,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           case "$TEST_TYPE" in
             capacity) SCRIPT="k6-script-test/browser/capacity-test.js" ;;
             homepage) SCRIPT="k6-script-test/browser/homepage-test.js" ;;
@@ -100,8 +105,10 @@ jobs:
             checkout) SCRIPT="k6-script-test/browser/checkout-test.js" ;;
             journey) SCRIPT="k6-script-test/browser/journey-test.js" ;;
           esac
+
           test -f "$SCRIPT"
           echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+
           mkdir -p k6-browser-results
 
       - name: Start Mimir port-forward when available
@@ -109,10 +116,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if command -v kubectl >/dev/null 2>&1 && kubectl get svc mimir-monolithic -n monitoring >/dev/null 2>&1; then
+
+          if command -v kubectl >/dev/null 2>&1 && \
+             kubectl get svc mimir-monolithic -n monitoring >/dev/null 2>&1; then
+
             kubectl -n monitoring port-forward svc/mimir-monolithic 19009:9009 \
               > k6-browser-results/mimir-port-forward.log 2>&1 &
+
             echo $! > k6-browser-results/mimir-port-forward.pid
+
             for i in $(seq 1 20); do
               if curl -fsS http://127.0.0.1:19009/ready >/dev/null 2>&1; then
                 echo "enabled=true" >> "$GITHUB_OUTPUT"
@@ -120,10 +132,12 @@ jobs:
               fi
               sleep 2
             done
+
             echo "Mimir not ready; continuing without remote write."
           else
             echo "kubectl/Mimir unavailable; continuing without remote write."
           fi
+
           echo "enabled=false" >> "$GITHUB_OUTPUT"
 
       - name: Run selected browser scenario
@@ -136,6 +150,7 @@ jobs:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -uo pipefail
+
           STARTED_AT="$(date --iso-8601=seconds)"
           STARTED_MS="$(date +%s%3N)"
 
@@ -144,41 +159,65 @@ jobs:
           export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
 
           K6_ARGS=()
+
           if [ "$MIMIR_ENABLED" = "true" ]; then
             export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
             export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
             export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
             export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
             export K6_PROMETHEUS_RW_LABELS="test_type=${TEST_TYPE},test_run=${GITHUB_RUN_ID},environment=coquette"
+
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
           set +e
-          k6 run "${K6_ARGS[@]}" \
+
+          k6 run \
+            --out json=k6-browser-results/k6-raw.json \
+            "${K6_ARGS[@]}" \
             --tag testid="github-${GITHUB_RUN_ID}" \
             --tag application="toko-coquette" \
             --tag test_category="browser" \
             --summary-export k6-browser-results/capacity-summary.json \
             "$SCRIPT" 2>&1 | tee k6-browser-results/k6-console.log
+
           K6_EXIT_CODE=${PIPESTATUS[0]}
+
           set -e
 
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
+
           FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
 
           python3 - "$TEST_TYPE" "$TARGET_URL" "$STARTED_AT" "$STARTED_MS" "$FINISHED_AT" "$FINISHED_MS" "$MAX_VUS" "$VUS_STEP" "$STAGE_DURATION" "$FAILURE_RATE_LIMIT" "$K6_EXIT_CODE" "$GITHUB_RUN_NUMBER" <<'PY'
           import json,sys
-          keys=["test_type","target_url","started_at","started_at_ms","finished_at","finished_at_ms","max_vus","vus_step","stage_duration","failure_rate_limit","k6_exit_code","run_number"]
-          vals=sys.argv[1:]
-          obj=dict(zip(keys,vals))
-          for k in ["started_at_ms","finished_at_ms","max_vus","vus_step","k6_exit_code","run_number"]:
-              obj[k]=int(obj[k])
-          with open("k6-browser-results/run-metadata.json","w") as f: json.dump(obj,f,indent=2)
+
+          keys = [
+              "test_type", "target_url", "started_at", "started_at_ms",
+              "finished_at", "finished_at_ms", "max_vus", "vus_step",
+              "stage_duration", "failure_rate_limit", "k6_exit_code",
+              "run_number"
+          ]
+
+          vals = sys.argv[1:]
+          obj = dict(zip(keys, vals))
+
+          for k in [
+              "started_at_ms", "finished_at_ms", "max_vus",
+              "vus_step", "k6_exit_code", "run_number"
+          ]:
+              obj[k] = int(obj[k])
+
+          with open("k6-browser-results/run-metadata.json", "w") as f:
+              json.dump(obj, f, indent=2)
           PY
+
           echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
+
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
           echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
+
           exit 0
 
       - name: Measure homepage recovery after capacity test
@@ -186,20 +225,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           START_MS="${{ steps.k6.outputs.load_finished_ms }}"
           START_MS="${START_MS:-$(date +%s%3N)}"
+
           DEADLINE=$(( $(date +%s) + RECOVERY_TIMEOUT_MINUTES * 60 ))
           CONSECUTIVE=0
           RECOVERED=false
           RECOVERED_AT_MS=0
+
           echo "timestamp,http_status,result" > k6-browser-results/recovery-probes.csv
 
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
             NOW="$(date +%s%3N)"
             CODE="$(curl -sS -L --max-time 10 -o /dev/null -w '%{http_code}' "$TARGET_URL" || true)"
+
             if [[ "$CODE" =~ ^2[0-9][0-9]$ ]]; then
               CONSECUTIVE=$((CONSECUTIVE + 1))
               echo "$NOW,$CODE,success" >> k6-browser-results/recovery-probes.csv
+
               if [ "$CONSECUTIVE" -ge 3 ]; then
                 RECOVERED=true
                 RECOVERED_AT_MS="$NOW"
@@ -209,6 +253,7 @@ jobs:
               CONSECUTIVE=0
               echo "$NOW,$CODE,failure" >> k6-browser-results/recovery-probes.csv
             fi
+
             sleep 5
           done
 
@@ -219,23 +264,168 @@ jobs:
           fi
 
           FIRST_FAILURE="$(cat k6-browser-results/first-failure-timestamp-ms.txt 2>/dev/null || true)"
+
           python3 - "$RECOVERED" "$START_MS" "$RECOVERED_AT_MS" "$RECOVERY_DURATION_MS" "$FIRST_FAILURE" <<'PY'
           import json,sys,datetime
-          recovered,start,at,duration,first=sys.argv[1:]
+
+          recovered,start,at,duration,first = sys.argv[1:]
+
           def iso(ms):
-              return datetime.datetime.fromtimestamp(int(ms)/1000,datetime.timezone.utc).isoformat() if ms and ms.isdigit() and int(ms)>0 else None
-          obj={"recovered":recovered=="true","recovery_started_at_ms":int(start),
-               "recovered_at_ms":int(at) if at else None,
-               "recovery_duration_ms":int(duration) if duration else None,
-               "recovery_started_at":iso(start),"recovered_at":iso(at),
-               "first_failure_at_ms":int(first) if first.isdigit() else None,
-               "first_failure_at":iso(first),"probe_interval_seconds":5,
-               "required_consecutive_successes":3}
-          with open("k6-browser-results/recovery.json","w") as f: json.dump(obj,f,indent=2)
+              return datetime.datetime.fromtimestamp(
+                  int(ms)/1000,
+                  datetime.timezone.utc
+              ).isoformat() if ms and ms.isdigit() and int(ms)>0 else None
+
+          obj = {
+              "recovered": recovered == "true",
+              "recovery_started_at_ms": int(start),
+              "recovered_at_ms": int(at) if at else None,
+              "recovery_duration_ms": int(duration) if duration else None,
+              "recovery_started_at": iso(start),
+              "recovered_at": iso(at),
+              "first_failure_at_ms": int(first) if first.isdigit() else None,
+              "first_failure_at": iso(first),
+              "probe_interval_seconds": 5,
+              "required_consecutive_successes": 3
+          }
+
+          with open("k6-browser-results/recovery.json", "w") as f:
+              json.dump(obj, f, indent=2)
           PY
+
           if [ "$RECOVERED" != true ]; then
             echo "::warning::Homepage did not recover within ${RECOVERY_TIMEOUT_MINUTES} minutes."
           fi
+
+      # Convert K6 JSON output into a JMeter-compatible CSV
+      - name: Generate CSV for JMeter
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RAW_FILE="k6-browser-results/k6-raw.json"
+          CSV_FILE="k6-browser-results/results.csv"
+
+          if [ ! -f "$RAW_FILE" ]; then
+            echo "::warning::K6 raw JSON not found. CSV generation skipped."
+            exit 0
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+
+          const input = 'k6-browser-results/k6-raw.json';
+          const output = 'k6-browser-results/results.csv';
+
+          const headers = [
+            'timeStamp',
+            'elapsed',
+            'label',
+            'responseCode',
+            'responseMessage',
+            'threadName',
+            'dataType',
+            'success',
+            'failureMessage',
+            'bytes',
+            'sentBytes',
+            'grpThreads',
+            'allThreads',
+            'URL',
+            'Latency',
+            'IdleTime',
+            'Connect'
+          ];
+
+          function csvEscape(value) {
+            if (value === null || value === undefined) return '';
+            const text = String(value);
+            return '"' + text.replace(/"/g, '""') + '"';
+          }
+
+          const lines = fs.readFileSync(input, 'utf8')
+            .split(/\r?\n/)
+            .filter(Boolean);
+
+          const rows = [headers.join(',')];
+
+          let exported = 0;
+
+          for (const line of lines) {
+            let event;
+
+            try {
+              event = JSON.parse(line);
+            } catch {
+              continue;
+            }
+
+            if (event.type !== 'Point' || !event.data || !event.metric) {
+              continue;
+            }
+
+            // Ambil metrik durasi HTTP dari browser atau HTTP request K6.
+            if (
+              event.metric !== 'browser_http_req_duration' &&
+              event.metric !== 'http_req_duration'
+            ) {
+              continue;
+            }
+
+            const data = event.data;
+            const tags = data.tags || {};
+
+            const timestamp = data.time
+              ? new Date(data.time).getTime()
+              : '';
+
+            const elapsed = Number(data.value || 0);
+            const status = tags.status || '';
+            const url = tags.url || '';
+            const label = tags.name || tags.method || event.metric;
+
+            let success = '';
+            let failureMessage = '';
+
+            if (status !== '') {
+              const statusCode = Number(status);
+              success = statusCode >= 200 && statusCode < 400;
+
+              if (!success) {
+                failureMessage = `HTTP ${statusCode}`;
+              }
+            }
+
+            const row = [
+              timestamp,
+              elapsed,
+              label,
+              status,
+              '',
+              '',
+              'text',
+              success,
+              failureMessage,
+              '',
+              '',
+              '',
+              '',
+              url,
+              '',
+              '',
+              ''
+            ];
+
+            rows.push(row.map(csvEscape).join(','));
+            exported++;
+          }
+
+          fs.writeFileSync(output, rows.join('\n') + '\n');
+
+          console.log(`CSV generated: ${output}`);
+          console.log(`HTTP request samples exported: ${exported}`);
+          NODE
 
       - name: Generate HTML report
         if: always()
