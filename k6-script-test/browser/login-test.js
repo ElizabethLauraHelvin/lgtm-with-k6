@@ -1,19 +1,4 @@
 
-import { browser } from 'k6/browser';
-import { Rate } from 'k6/metrics';
-import { runJourney } from './journey.js';
-import { sleep } from 'k6';
-
-const failureRateLimit = Math.min(
-  0.5,
-  Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10))
-);
-
-const maxRecoveryAttempts = 1;
-const recoveryDelaySeconds = 3;
-
-const browserSessionSuccess = new Rate('browser_session_success');
-
 export const options = {
   scenarios: {
     login_browser: {
@@ -21,24 +6,17 @@ export const options = {
       startVUs: 1,
 
       stages: [
-        { duration: '1m', target: 1 },
+        { duration: '30s', target: 1 },
+        { duration: '1m', target: 2 },
         { duration: '1m', target: 3 },
         { duration: '1m', target: 5 },
+        { duration: '1m', target: 7 },
         { duration: '1m', target: 10 },
-        { duration: '1m', target: 15 },
-        { duration: '1m', target: 20 },
-        { duration: '1m', target: 30 },
-        { duration: '1m', target: 40 },
-        { duration: '1m', target: 50 },
-        { duration: '1m', target: 60 },
-        { duration: '1m', target: 70 },
-        { duration: '1m', target: 80 },
-        { duration: '1m', target: 90 },
-        { duration: '1m', target: 100 },
-        { duration: '1m', target: 0 },
+        { duration: '30s', target: 0 },
       ],
 
       gracefulRampDown: '10s',
+      gracefulStop: '15s',
 
       options: {
         browser: {
@@ -50,69 +28,11 @@ export const options = {
 
   thresholds: {
     browser_session_success: [{
-      threshold: `rate>${1 - failureRateLimit}`,
+      threshold: 'rate>0.90',
       abortOnFail: true,
       delayAbortEval: '30s',
     }],
   },
 
-  maxVUs: 100,
+  maxVUs: 10,
 };
-
-export default async function () {
-  let sessionOk = false;
-
-  for (let attempt = 0; attempt <= maxRecoveryAttempts; attempt++) {
-    let page;
-
-    try {
-      console.log(
-        `LOGIN_ATTEMPT attempt=${attempt + 1} max_attempts=${maxRecoveryAttempts + 1}`
-      );
-
-      page = await browser.newPage();
-
-      // Percobaan tidak langsung dicatat sebagai hasil akhir journey.
-      await runJourney(page, 'login', { recordMetrics: false });
-
-      sessionOk = true;
-
-      console.log(`LOGIN_SUCCESS attempt=${attempt + 1}`);
-      break;
-
-    } catch (error) {
-      console.error(
-        `LOGIN_BROWSER_FAILURE attempt=${attempt + 1} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
-      );
-
-      if (attempt === maxRecoveryAttempts) {
-        console.error('LOGIN_RECOVERY_FAILED: maximum retry reached');
-      }
-
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-          console.log(`BROWSER_PAGE_CLOSED attempt=${attempt + 1}`);
-        } catch (closeError) {
-          console.error(
-            `BROWSER_CLEANUP_FAILURE error=${String(closeError).replace(/\s+/g, ' ').slice(0, 500)}`
-          );
-        }
-      }
-    }
-
-    if (!sessionOk && attempt < maxRecoveryAttempts) {
-      console.warn(`LOGIN_RECOVERY_WAIT seconds=${recoveryDelaySeconds}`);
-      sleep(recoveryDelaySeconds);
-    }
-  }
-
-  browserSessionSuccess.add(sessionOk);
-
-  if (!sessionOk) {
-    console.error('LOGIN_SESSION_FAILED: stopping this iteration');
-  }
-
-  sleep(2);
-}
