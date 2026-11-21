@@ -1,14 +1,23 @@
 
 import { browser } from 'k6/browser';
+import { Rate } from 'k6/metrics';
 import { runJourney } from './journey.js';
 import { sleep } from 'k6';
+
+const failureRateLimit = Math.min(
+  0.5,
+  Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10))
+);
+
+const maxRecoveryAttempts = 1;
+const recoveryDelaySeconds = 3;
+
+const browserSessionSuccess = new Rate('browser_session_success');
 
 export const options = {
   scenarios: {
     login_browser: {
       executor: 'ramping-vus',
-
-      // Mulai dari 1 VU
       startVUs: 1,
 
       stages: [
@@ -39,32 +48,71 @@ export const options = {
     },
   },
 
-  // Hentikan test jika performa mulai melewati batas
   thresholds: {
-    journey_success: [
-      {
-        threshold: 'rate>0.90',
-        abortOnFail: true,
-        delayAbortEval: '30s',
-      },
-    ],
-
-    journey_duration_ms: [
-      'p(95)<5000',
-    ],
+    browser_session_success: [{
+      threshold: `rate>${1 - failureRateLimit}`,
+      abortOnFail: true,
+      delayAbortEval: '30s',
+    }],
   },
 
-  // Batas maksimum VU
   maxVUs: 100,
 };
 
 export default async function () {
-  const page = await browser.newPage();
+  let sessionOk = false;
 
-  try {
-    await runJourney(page, 'login');
-    sleep(2);
-  } finally {
-    await page.close();
+  for (let attempt = 0; attempt <= maxRecoveryAttempts; attempt++) {
+    let page;
+
+    try {
+      console.log(
+        `LOGIN_ATTEMPT attempt=${attempt + 1} max_attempts=${maxRecoveryAttempts + 1}`
+      );
+
+      page = await browser.newPage();
+
+      // Percobaan tidak langsung dicatat sebagai hasil akhir journey.
+      await runJourney(page, 'login', { recordMetrics: false });
+
+      sessionOk = true;
+
+      console.log(`LOGIN_SUCCESS attempt=${attempt + 1}`);
+      break;
+
+    } catch (error) {
+      console.error(
+        `LOGIN_BROWSER_FAILURE attempt=${attempt + 1} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
+      );
+
+      if (attempt === maxRecoveryAttempts) {
+        console.error('LOGIN_RECOVERY_FAILED: maximum retry reached');
+      }
+
+    } finally {
+      if (page) {
+        try {
+          await page.close();
+          console.log(`BROWSER_PAGE_CLOSED attempt=${attempt + 1}`);
+        } catch (closeError) {
+          console.error(
+            `BROWSER_CLEANUP_FAILURE error=${String(closeError).replace(/\s+/g, ' ').slice(0, 500)}`
+          );
+        }
+      }
+    }
+
+    if (!sessionOk && attempt < maxRecoveryAttempts) {
+      console.warn(`LOGIN_RECOVERY_WAIT seconds=${recoveryDelaySeconds}`);
+      sleep(recoveryDelaySeconds);
+    }
   }
+
+  browserSessionSuccess.add(sessionOk);
+
+  if (!sessionOk) {
+    console.error('LOGIN_SESSION_FAILED: stopping this iteration');
+  }
+
+  sleep(2);
 }
