@@ -17,7 +17,9 @@ export const firstFailureTimestamp = new Trend('failure_timestamp_ms', true);
 export const failureVus = new Trend('failure_vus', true);
 
 function assert(condition, message) {
-  check(condition, { [message]: value => value === true });
+  check(condition, {
+    [message]: value => value === true,
+  });
 
   if (!condition) {
     throw new Error(message);
@@ -70,7 +72,11 @@ async function browseProducts(page) {
   });
 
   assert(
-    Boolean(response && response.status() >= 200 && response.status() < 400),
+    Boolean(
+      response &&
+      response.status() >= 200 &&
+      response.status() < 400
+    ),
     'Homepage should return HTTP 2xx/3xx'
   );
 
@@ -81,13 +87,18 @@ async function browseProducts(page) {
 
   const count = await page.locator('#app .grid .card').count();
 
-  assert(count > 0, 'Product listing should contain products');
+  assert(
+    count > 0,
+    'Product listing should contain products'
+  );
 
   return count;
 }
 
 async function addFirstProduct(page) {
-  const addButton = page.locator('#app .grid .card .btn').first();
+  const addButton = page.locator(
+    '#app .grid .card .btn'
+  ).first();
 
   await addButton.waitFor({
     state: 'visible',
@@ -95,13 +106,20 @@ async function addFirstProduct(page) {
   });
 
   await addButton.click();
-  await page.locator('#cnt').waitFor({ state: 'visible' });
+
+  await page.locator('#cnt').waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
 
   const cartCount = Number(
     await page.locator('#cnt').textContent()
   );
 
-  assert(cartCount > 0, 'Product should be added to cart');
+  assert(
+    cartCount > 0,
+    'Product should be added to cart'
+  );
 }
 
 async function openCart(page) {
@@ -119,6 +137,7 @@ async function openCart(page) {
 }
 
 async function checkoutReview(page) {
+  // Open checkout modal
   await page.locator('#drawer button.btn').click();
 
   await page.locator('#ov.show #modal').waitFor({
@@ -126,6 +145,7 @@ async function checkoutReview(page) {
     timeout: 10000,
   });
 
+  // Wait for checkout form
   await page.locator('#f_s').waitFor({
     state: 'visible',
     timeout: 10000,
@@ -141,7 +161,68 @@ async function checkoutReview(page) {
     'Checkout total should be visible'
   );
 
-  // Tidak membuat pesanan production.
+  // Select shipping method
+  await page.locator('#f_s').selectOption('reguler');
+
+  // Select payment method
+  await page.locator('#f_p').selectOption({
+    label: 'QRIS',
+  });
+
+  // Verify checkout form values
+  const shipping = await page.locator('#f_s').inputValue();
+  const payment = await page.locator('#f_p').inputValue();
+
+  assert(
+    shipping === 'reguler',
+    'Shipping method should be reguler'
+  );
+
+  assert(
+    payment === 'QRIS',
+    'Payment method should be QRIS'
+  );
+
+  // Register response listener BEFORE clicking submit.
+  // This verifies the actual backend POST /api/orders request.
+  const orderResponsePromise = page.waitForResponse(
+    response => {
+      return (
+        response.request().method() === 'POST' &&
+        response.url().includes('/api/orders')
+      );
+    },
+    {
+      timeout: 20000,
+    }
+  );
+
+  // Click "Buat Pesanan"
+  await page.locator('#co_go').click();
+
+  // Wait for backend response
+  const orderResponse = await orderResponsePromise;
+
+  const status = orderResponse.status();
+
+  assert(
+    status === 201,
+    `POST /api/orders should return HTTP 201, received ${status}`
+  );
+
+  // Read response body
+  const orderData = await orderResponse.json();
+
+  assert(
+    Boolean(orderData && orderData.id),
+    'Order response should contain an order ID'
+  );
+
+  console.log(
+    `ORDER_CREATED id=${orderData.id} status=${status} payment=${payment} shipping=${shipping}`
+  );
+
+  return orderData;
 }
 
 export async function runJourney(
@@ -153,22 +234,31 @@ export async function runJourney(
   let ok = false;
 
   try {
+    // Step 1: Open homepage and browse products
     await browseProducts(page);
 
-    if (type === 'homepage' || type === 'product') {
-      if (type === 'product') {
-        await page.locator('#app .grid .card .img').first().click();
+    // Homepage-only scenario
+    if (type === 'homepage') {
+      ok = true;
+      return;
+    }
 
-        await page.locator('#ov.show #modal').waitFor({
-          state: 'visible',
-          timeout: 10000,
-        });
-      }
+    // Product detail scenario
+    if (type === 'product') {
+      await page.locator(
+        '#app .grid .card .img'
+      ).first().click();
+
+      await page.locator('#ov.show #modal').waitFor({
+        state: 'visible',
+        timeout: 10000,
+      });
 
       ok = true;
       return;
     }
 
+    // Step 2: Login
     await login(page);
 
     if (type === 'login') {
@@ -176,8 +266,13 @@ export async function runJourney(
       return;
     }
 
+    // Step 3: Browse products again after login
     await browseProducts(page);
+
+    // Step 4: Add product to cart
     await addFirstProduct(page);
+
+    // Step 5: Open cart
     await openCart(page);
 
     if (type === 'cart') {
@@ -185,7 +280,14 @@ export async function runJourney(
       return;
     }
 
-    await checkoutReview(page);
+    // Step 6: Checkout and create a real order
+    const order = await checkoutReview(page);
+
+    assert(
+      Boolean(order && order.id),
+      'Checkout should create an order successfully'
+    );
+
     ok = true;
 
   } catch (error) {

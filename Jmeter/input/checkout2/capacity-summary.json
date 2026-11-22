@@ -1,11 +1,73 @@
 {
     "metrics": {
+        "browser_web_vital_fcp": {
+            "min": 32,
+            "med": 72,
+            "max": 184,
+            "p(90)": 124,
+            "p(95)": 132,
+            "avg": 76.2
+        },
+        "data_sent": {
+            "count": 0,
+            "rate": 0
+        },
+        "iteration_duration": {
+            "med": 6749.796509,
+            "max": 7149.96071,
+            "p(90)": 6863.395619,
+            "p(95)": 6914.88114535,
+            "avg": 6766.567258871434,
+            "min": 6665.681064
+        },
+        "browser_web_vital_inp": {
+            "max": 72,
+            "p(90)": 32,
+            "p(95)": 40,
+            "avg": 24.114285714285714,
+            "min": 16,
+            "med": 24
+        },
+        "browser_web_vital_cls": {
+            "p(95)": 0.1377733127276103,
+            "avg": 0.09107372349032346,
+            "min": 0.00017595926920572916,
+            "med": 0.1034498092201021,
+            "max": 0.13973279343711006,
+            "p(90)": 0.11966817359659405
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 10
+        },
+        "browser_web_vital_lcp": {
+            "avg": 98.11428571428571,
+            "min": 48,
+            "med": 106,
+            "max": 252,
+            "p(90)": 144,
+            "p(95)": 156
+        },
+        "iterations": {
+            "rate": 0.5070733918839756,
+            "count": 140
+        },
         "browser_session_success": {
-            "fails": 0,
             "passes": 140,
+            "fails": 0,
             "thresholds": {
                 "rate>0.9": false
             },
+            "value": 1
+        },
+        "browser_data_received": {
+            "count": 17801410,
+            "rate": 64475.86677869516
+        },
+        "checks": {
+            "passes": 980,
+            "fails": 0,
             "value": 1
         },
         "vus_max": {
@@ -13,117 +75,53 @@
             "min": 10,
             "max": 10
         },
-        "browser_web_vital_cls": {
-            "avg": 0.09263081205416301,
-            "min": 0,
-            "med": 0.10450659354527791,
-            "max": 0.13973279343711006,
-            "p(90)": 0.1377733127276103,
-            "p(95)": 0.1377733127276103
+        "browser_data_sent": {
+            "count": 1087454,
+            "rate": 3938.7070592699774
         },
         "browser_web_vital_ttfb": {
-            "max": 11.599999999627471,
-            "p(90)": 5.609999999590218,
-            "p(95)": 6.400000000372529,
-            "avg": 2.882499999925494,
+            "avg": 2.9842857141912518,
             "min": 0.8999999985098839,
-            "med": 2.699999999254942
-        },
-        "vus": {
-            "value": 1,
-            "min": 1,
-            "max": 10
-        },
-        "browser_data_sent": {
-            "count": 1086028,
-            "rate": 3931.6202296908923
+            "med": 2.799999998882413,
+            "max": 12.800000000745058,
+            "p(90)": 5.210000000894069,
+            "p(95)": 6.605000001378358
         },
         "browser_http_req_failed": {
             "passes": 0,
             "fails": 2800,
             "value": 0
         },
-        "browser_web_vital_inp": {
-            "avg": 24.02857142857143,
-            "min": 16,
-            "med": 24,
-            "max": 80,
-            "p(90)": 32,
-            "p(95)": 40
-        },
-        "browser_web_vital_lcp": {
-            "max": 280,
-            "p(90)": 148,
-            "p(95)": 164.20000000000005,
-            "avg": 98.24285714285715,
-            "min": 44,
-            "med": 104
-        },
-        "data_sent": {
-            "count": 0,
-            "rate": 0
-        },
-        "browser_data_received": {
-            "count": 17807001,
-            "rate": 64464.6043764304
-        },
-        "checks": {
-            "fails": 0,
-            "passes": 980,
-            "value": 1
-        },
-        "iteration_duration": {
-            "p(90)": 6866.6909729,
-            "p(95)": 6912.9853333500005,
-            "avg": 6769.003207999999,
-            "min": 6676.241336,
-            "med": 6743.1650580000005,
-            "max": 7119.486097
+        "data_received": {
+            "rate": 0,
+            "count": 0
         },
         "browser_http_req_duration": {
-            "avg": 14.645328575000011,
-            "min": 0.011,
-            "med": 4.9735005,
-            "max": 123.341001,
-            "p(90)": 39.430499999999995,
-            "p(95)": 76.704251
-        },
-        "browser_web_vital_fcp": {
-            "avg": 76.05714285714286,
-            "min": 32,
-            "med": 72,
-            "max": 232,
-            "p(90)": 124,
-            "p(95)": 128
-        },
-        "data_received": {
-            "count": 0,
-            "rate": 0
-        },
-        "iterations": {
-            "count": 140,
-            "rate": 0.5068256363157533
+            "min": 0.011999,
+            "med": 5.027501,
+            "max": 212.411001,
+            "p(90)": 38.632799999999996,
+            "p(95)": 76.36990005,
+            "avg": 14.762984647500014
         }
     },
     "root_group": {
-        "name": "",
-        "path": "",
         "id": "d41d8cd98f00b204e9800998ecf8427e",
         "groups": {},
         "checks": {
             "Homepage should return HTTP 2xx/3xx": {
-                "fails": 0,
                 "name": "Homepage should return HTTP 2xx/3xx",
                 "path": "::Homepage should return HTTP 2xx/3xx",
                 "id": "0bdf7c802c5adf9cc68c10632f439900",
-                "passes": 280
-            },
-            "Product listing should contain products": {
-                "name": "Product listing should contain products",
-                "path": "::Product listing should contain products",
-                "id": "560390cb8573638e668463b924007a00",
                 "passes": 280,
                 "fails": 0
+            },
+            "Product listing should contain products": {
+                "passes": 280,
+                "fails": 0,
+                "name": "Product listing should contain products",
+                "path": "::Product listing should contain products",
+                "id": "560390cb8573638e668463b924007a00"
             },
             "Login should display authenticated user": {
                 "name": "Login should display authenticated user",
@@ -146,6 +144,8 @@
                 "id": "ee47b6ee2cb30b6eb0fd4a49f9c9be53",
                 "passes": 140
             }
-        }
+        },
+        "name": "",
+        "path": ""
     }
 }
