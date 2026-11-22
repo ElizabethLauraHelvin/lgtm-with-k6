@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Convert k6 JSON Lines output into a JMeter CSV/JTL file.
+"""Convert k6 JSON Lines HTTP duration points into JMeter CSV/JTL.
 
-Each browser_http_req_duration point (preferred) becomes one JMeter sample.
-If no browser points exist, http_req_duration points are used instead.
-Only source-supported values are populated; unavailable byte, latency, connect,
-thread-count and idle-time fields remain empty rather than being fabricated.
+JMeter expects numeric values in several CSV columns. Values not measured by
+this k6 metric are written as 0 placeholders, not represented as real metrics.
 """
 from __future__ import annotations
 
@@ -21,17 +19,14 @@ COLUMNS = [
     "sentBytes", "grpThreads", "allThreads", "URL", "Latency",
     "IdleTime", "Connect",
 ]
-
 PREFERRED_METRIC = "browser_http_req_duration"
 FALLBACK_METRIC = "http_req_duration"
 
 
-def timestamp_ms(value: object) -> int | None:
+def timestamp_ms(value):
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        # k6 JSON timestamps are normally ISO-8601 strings. Numeric values,
-        # if present, are treated as epoch milliseconds when large enough.
         number = float(value)
         return int(round(number if number > 10_000_000_000 else number * 1000))
     text = str(value).strip()
@@ -46,18 +41,17 @@ def timestamp_ms(value: object) -> int | None:
         return None
 
 
-def response_message(code: int) -> str:
+def response_message(code):
     try:
         return HTTPStatus(code).phrase
     except ValueError:
         return "" if code == 0 else f"HTTP {code}"
 
 
-def load_points(path: Path) -> tuple[list[dict], dict[str, int]]:
-    points: list[dict] = []
-    metric_counts: dict[str, int] = {}
+def load_points(path):
+    points, counts = [], {}
     with path.open("r", encoding="utf-8") as source:
-        for line_number, line in enumerate(source, 1):
+        for line in source:
             line = line.strip()
             if not line:
                 continue
@@ -69,12 +63,12 @@ def load_points(path: Path) -> tuple[list[dict], dict[str, int]]:
                 continue
             metric = event.get("metric", "")
             if metric in (PREFERRED_METRIC, FALLBACK_METRIC):
-                metric_counts[metric] = metric_counts.get(metric, 0) + 1
+                counts[metric] = counts.get(metric, 0) + 1
                 points.append(event)
-    return points, metric_counts
+    return points, counts
 
 
-def main() -> int:
+def main():
     if len(sys.argv) != 3:
         print("Usage: python3 convert_k6_json_to_jtl.py input.json output.jtl", file=sys.stderr)
         return 2
@@ -84,22 +78,21 @@ def main() -> int:
         print(f"Input file not found: {source_path}", file=sys.stderr)
         return 2
 
-    points, metric_counts = load_points(source_path)
-    preferred_exists = any(
-        p.get("metric") == PREFERRED_METRIC for p in points
+    points, counts = load_points(source_path)
+    selected = (
+        PREFERRED_METRIC
+        if any(p.get("metric") == PREFERRED_METRIC for p in points)
+        else FALLBACK_METRIC
     )
-    selected_metric = PREFERRED_METRIC if preferred_exists else FALLBACK_METRIC
-
-    exported = 0
-    skipped_missing_fields = 0
+    exported = skipped = 0
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w", newline="", encoding="utf-8") as destination:
-        writer = csv.DictWriter(destination, fieldnames=COLUMNS, extrasaction="ignore")
+        writer = csv.DictWriter(destination, fieldnames=COLUMNS)
         writer.writeheader()
 
         for event in points:
-            if event.get("metric") != selected_metric:
+            if event.get("metric") != selected:
                 continue
             data = event.get("data") or {}
             tags = data.get("tags") or {}
@@ -108,53 +101,51 @@ def main() -> int:
             value = data.get("value")
             status_raw = tags.get("status")
 
-            # Without a URL, timestamp, duration, or status, a truthful
-            # endpoint sample cannot be represented in JMeter's JTL format.
             if not url or stamp is None or value is None or status_raw in (None, ""):
-                skipped_missing_fields += 1
+                skipped += 1
                 continue
-
             try:
                 elapsed = max(0, int(round(float(value))))
                 status = int(float(status_raw))
-            except (TypeError, ValueError):
-                skipped_missing_fields += 1
+            except (TypeError, ValueError, OverflowError):
+                skipped += 1
                 continue
 
             success = 200 <= status < 400
-            failure = "" if success else (f"HTTP {status}" if status else "Request failed")
-            label = str(tags.get("name") or url)
-
             writer.writerow({
                 "timeStamp": stamp,
                 "elapsed": elapsed,
-                "label": label,
+                "label": str(tags.get("name") or url),
                 "responseCode": status,
                 "responseMessage": response_message(status),
-                "threadName": "K6 Browser (source)",
+                "threadName": str(tags.get("scenario") or "K6 Browser"),
                 "dataType": "text",
                 "success": "true" if success else "false",
-                "failureMessage": failure,
-                "bytes": "",
-                "sentBytes": "",
-                "grpThreads": "",
-                "allThreads": "",
+                "failureMessage": "" if success else f"HTTP {status}",
+                # Numeric placeholders required by JMeter's CSV parser.
+                # They are not measured values from k6.
+                "bytes": 0,
+                "sentBytes": 0,
+                "grpThreads": 0,
+                "allThreads": 0,
                 "URL": url,
-                "Latency": "",
-                "IdleTime": "",
-                "Connect": "",
+                "Latency": 0,
+                "IdleTime": 0,
+                "Connect": 0,
             })
             exported += 1
 
     print(f"Input: {source_path}")
-    print(f"Selected metric: {selected_metric}")
-    print(f"Metric points found: {metric_counts.get(selected_metric, 0)}")
+    print(f"Selected metric: {selected}")
+    print(f"Metric points found: {counts.get(selected, 0)}")
     print(f"JTL samples exported: {exported}")
-    print(f"Samples skipped (missing URL/time/duration/status): {skipped_missing_fields}")
+    print(f"Samples skipped: {skipped}")
     print(f"Output: {output_path}")
+    print("Note: bytes, sentBytes, thread counts, Latency, IdleTime and Connect are 0 placeholders, not measured values.")
+
     if exported == 0:
-        print("::warning::No usable HTTP request samples were found; check k6 raw JSON metric tags.")
-    print("Note: bytes, sentBytes, latency, connect time, idle time and active thread counts are left blank because k6 source points do not provide them.")
+        print("::warning::No usable HTTP samples found; inspect k6 JSON metric names and URL/status tags.")
+        return 1
     return 0
 
 
