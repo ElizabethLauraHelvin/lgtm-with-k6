@@ -49,7 +49,6 @@ jobs:
       TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
 
     steps:
-
       # ==========================================
       # 1. CHECKOUT
       # ==========================================
@@ -216,11 +215,52 @@ jobs:
           export TEST_PASSWORD
 
           # ----------------------------------------
+          # SYSTEMD USER MANAGER CONFIGURATION
+          # ----------------------------------------
+
+          echo "================================"
+          echo "SYSTEMD ENVIRONMENT CHECK"
+          echo "================================"
+
+          RUNNER_UID="$(id -u)"
+          RUNNER_USER="$(whoami)"
+
+          export XDG_RUNTIME_DIR="/run/user/${RUNNER_UID}"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+
+          echo "Runner user: ${RUNNER_USER}"
+          echo "Runner UID: ${RUNNER_UID}"
+          echo "XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR}"
+          echo "DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS}"
+
+          echo "Checking runtime directory..."
+          if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+            echo "::error::Runtime directory does not exist: $XDG_RUNTIME_DIR"
+            exit 1
+          fi
+
+          echo "Checking systemd user bus..."
+          if [ ! -S "${XDG_RUNTIME_DIR}/bus" ]; then
+            echo "::error::Systemd user bus socket is unavailable."
+            echo "Check loginctl enable-linger and user@${RUNNER_UID}.service."
+            exit 1
+          fi
+
+          echo "Checking systemd user manager..."
+          if ! systemctl --user is-system-running; then
+            echo "::error::Cannot connect to the systemd user manager."
+            systemctl --user status || true
+            exit 1
+          fi
+
+          echo "Systemd user manager is available."
+
+          # ----------------------------------------
           # RESOURCE LIMIT CONFIGURATION
           # VM: 8 GB RAM / 4 vCPU
           # Reserve: 1 GB RAM
           # K6: maximum 7 GB RAM
-          # K6: maximum 2 vCPU
+          # K6: maximum 2 CPU
           # ----------------------------------------
 
           TOTAL_RAM_BYTES=$(awk '/MemTotal/ {print $2 * 1024}' /proc/meminfo)
@@ -248,12 +288,9 @@ jobs:
           echo "CPU Quota: $CPU_QUOTA"
           echo "================================"
 
-          # Check user systemd manager
-          if ! systemctl --user is-system-running >/dev/null 2>&1; then
-            echo "::error::User systemd manager is unavailable."
-            echo "Enable lingering or configure the runner user systemd manager first."
-            exit 1
-          fi
+          # ----------------------------------------
+          # MIMIR CONFIGURATION
+          # ----------------------------------------
 
           K6_ARGS=()
 
@@ -266,6 +303,10 @@ jobs:
 
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
+
+          # ----------------------------------------
+          # RUN K6 INSIDE SYSTEMD RESOURCE SCOPE
+          # ----------------------------------------
 
           echo "Starting K6 inside resource-limited systemd scope."
 
