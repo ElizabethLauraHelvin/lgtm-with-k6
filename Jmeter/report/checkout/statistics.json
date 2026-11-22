@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 138,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 6850.543478260868,
+    "medianResTime" : 6770.5,
+    "minResTime" : 6455.0,
+    "maxResTime" : 8049.0,
+    "pct1ResTime" : 7163.5,
+    "pct2ResTime" : 7262.1,
+    "pct3ResTime" : 7785.35999999999,
+    "throughput" : 0.505711238882598,
+    "receivedKBytesPerSec" : 0.0,
+    "sentKBytesPerSec" : 0.0
+  },
+  "K6 Browser - Product Iteration" : {
+    "transaction" : "K6 Browser - Product Iteration",
+    "sampleCount" : 138,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 6850.543478260868,
+    "medianResTime" : 6770.5,
+    "minResTime" : 6455.0,
+    "maxResTime" : 8049.0,
+    "pct1ResTime" : 7163.5,
+    "pct2ResTime" : 7262.1,
+    "pct3ResTime" : 7785.35999999999,
+    "throughput" : 0.505711238882598,
+    "receivedKBytesPerSec" : 0.0,
+    "sentKBytesPerSec" : 0.0
+  }
+}
