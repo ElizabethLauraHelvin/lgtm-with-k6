@@ -17,7 +17,6 @@ on:
           - checkout
           - journey
         default: capacity
-
       target_url:
         description: "Base URL frontend Toko Coquette"
         required: true
@@ -40,7 +39,7 @@ jobs:
     env:
       TARGET_URL: ${{ inputs.target_url }}
       TEST_TYPE: ${{ inputs.test_type }}
-      MAX_VUS: "10"
+      MAX_VUS: "50"
       VUS_STEP: "2"
       STAGE_DURATION: "30s"
       FAILURE_RATE_LIMIT: "0.10"
@@ -49,67 +48,49 @@ jobs:
       TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
 
     steps:
-      # ==========================================
-      # 1. CHECKOUT
-      # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ==========================================
-      # 2. NODE.JS
-      # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      # ==========================================
-      # 3. K6 BROWSER
-      # ==========================================
       - name: Setup k6 with browser support
         uses: grafana/setup-k6-action@v1
         with:
           browser: true
 
-      # ==========================================
-      # 4. VALIDATE RUNNER
-      # ==========================================
       - name: Validate runner and application
         shell: bash
         run: |
           set -euo pipefail
-
           command -v k6
           command -v curl
           command -v node
           command -v python3
-          command -v systemd-run
-
           k6 version
 
           test -f "k6-script-test/browser/config.js"
           test -f "k6-script-test/browser/journey.js"
+          test -f "convert_k6_json_to_jtl.py"
 
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
           case "$TEST_TYPE" in
             capacity|login|cart|checkout|journey)
               if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
-                echo "::error::Missing K6_TEST_EMAIL or K6_TEST_PASSWORD."
+                echo "::error::Skenario $TEST_TYPE memerlukan repository secrets K6_TEST_EMAIL dan K6_TEST_PASSWORD."
                 exit 1
               fi
               ;;
-            homepage|product)
-              ;;
+            homepage|product) ;;
             *)
-              echo "::error::Unknown test type: $TEST_TYPE"
+              echo "::error::Skenario tidak dikenal: $TEST_TYPE"
               exit 1
               ;;
           esac
 
-      # ==========================================
-      # 5. SELECT SCRIPT
-      # ==========================================
       - name: Select script and prepare results
         id: select
         shell: bash
@@ -117,46 +98,20 @@ jobs:
           set -euo pipefail
 
           case "$TEST_TYPE" in
-            capacity)
-              SCRIPT="k6-script-test/browser/capacity-test.js"
-              ;;
-            homepage)
-              SCRIPT="k6-script-test/browser/homepage-test.js"
-              ;;
-            product)
-              SCRIPT="k6-script-test/browser/product-test.js"
-              ;;
-            login)
-              SCRIPT="k6-script-test/browser/login-test.js"
-              ;;
-            cart)
-              SCRIPT="k6-script-test/browser/cart-test.js"
-              ;;
-            checkout)
-              SCRIPT="k6-script-test/browser/checkout-test.js"
-              ;;
-            journey)
-              SCRIPT="k6-script-test/browser/journey-test.js"
-              ;;
+            capacity) SCRIPT="k6-script-test/browser/capacity-test.js" ;;
+            homepage) SCRIPT="k6-script-test/browser/homepage-test.js" ;;
+            product) SCRIPT="k6-script-test/browser/product-test.js" ;;
+            login) SCRIPT="k6-script-test/browser/login-test.js" ;;
+            cart) SCRIPT="k6-script-test/browser/cart-test.js" ;;
+            checkout) SCRIPT="k6-script-test/browser/checkout-test.js" ;;
+            journey) SCRIPT="k6-script-test/browser/journey-test.js" ;;
           esac
 
           test -f "$SCRIPT"
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
 
           mkdir -p k6-browser-results
 
-          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
-
-          echo "JTL_FILE=k6-browser-results/k6-${TEST_TYPE}-results-fixed.jtl" >> "$GITHUB_ENV"
-
-          echo "SUMMARY_FILE=k6-browser-results/k6-${TEST_TYPE}-capacity-summary.json" >> "$GITHUB_ENV"
-
-          echo "RECOVERY_FILE=k6-browser-results/k6-${TEST_TYPE}-recovery.json" >> "$GITHUB_ENV"
-
-          echo "Selected script: $SCRIPT"
-
-      # ==========================================
-      # 6. START MIMIR PORT-FORWARD
-      # ==========================================
       - name: Start Mimir port-forward when available
         id: mimir
         shell: bash
@@ -167,29 +122,25 @@ jobs:
              kubectl get svc mimir-monolithic -n monitoring >/dev/null 2>&1; then
 
             kubectl -n monitoring port-forward svc/mimir-monolithic 19009:9009 \
-              > /tmp/k6-mimir-port-forward.log 2>&1 &
+              > k6-browser-results/mimir-port-forward.log 2>&1 &
 
-            echo $! > /tmp/k6-mimir-port-forward.pid
+            echo $! > k6-browser-results/mimir-port-forward.pid
 
             for i in $(seq 1 20); do
               if curl -fsS http://127.0.0.1:19009/ready >/dev/null 2>&1; then
                 echo "enabled=true" >> "$GITHUB_OUTPUT"
-                echo "Mimir is ready."
                 exit 0
               fi
               sleep 2
             done
 
-            echo "Mimir unavailable; continuing without remote write."
+            echo "Mimir not ready; continuing without remote write."
           else
-            echo "Mimir unavailable; continuing without remote write."
+            echo "kubectl/Mimir unavailable; continuing without remote write."
           fi
 
           echo "enabled=false" >> "$GITHUB_OUTPUT"
 
-      # ==========================================
-      # 7. RUN K6 WITH RESOURCE LIMITS
-      # ==========================================
       - name: Run selected browser scenario
         id: k6
         shell: bash
@@ -206,91 +157,7 @@ jobs:
 
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
-
-          export MAX_VUS
-          export VUS_STEP
-          export STAGE_DURATION
-          export FAILURE_RATE_LIMIT
-          export TEST_EMAIL
-          export TEST_PASSWORD
-
-          # ----------------------------------------
-          # SYSTEMD USER MANAGER CONFIGURATION
-          # ----------------------------------------
-
-          echo "================================"
-          echo "SYSTEMD ENVIRONMENT CHECK"
-          echo "================================"
-
-          RUNNER_UID="$(id -u)"
-          RUNNER_USER="$(whoami)"
-
-          export XDG_RUNTIME_DIR="/run/user/${RUNNER_UID}"
-          export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
-
-          echo "Runner user: ${RUNNER_USER}"
-          echo "Runner UID: ${RUNNER_UID}"
-          echo "XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR}"
-          echo "DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS}"
-
-          echo "Checking runtime directory..."
-          if [ ! -d "$XDG_RUNTIME_DIR" ]; then
-            echo "::error::Runtime directory does not exist: $XDG_RUNTIME_DIR"
-            exit 1
-          fi
-
-          echo "Checking systemd user bus..."
-          if [ ! -S "${XDG_RUNTIME_DIR}/bus" ]; then
-            echo "::error::Systemd user bus socket is unavailable."
-            echo "Check loginctl enable-linger and user@${RUNNER_UID}.service."
-            exit 1
-          fi
-
-          echo "Checking systemd user manager..."
-          if ! systemctl --user is-system-running; then
-            echo "::error::Cannot connect to the systemd user manager."
-            systemctl --user status || true
-            exit 1
-          fi
-
-          echo "Systemd user manager is available."
-
-          # ----------------------------------------
-          # RESOURCE LIMIT CONFIGURATION
-          # VM: 8 GB RAM / 4 vCPU
-          # Reserve: 1 GB RAM
-          # K6: maximum 7 GB RAM
-          # K6: maximum 2 CPU
-          # ----------------------------------------
-
-          TOTAL_RAM_BYTES=$(awk '/MemTotal/ {print $2 * 1024}' /proc/meminfo)
-
-          RESERVED_RAM_BYTES=$((1024 * 1024 * 1024))
-
-          K6_MEMORY_MAX=$((TOTAL_RAM_BYTES - RESERVED_RAM_BYTES))
-
-          K6_MEMORY_HIGH=$((K6_MEMORY_MAX * 90 / 100))
-
-          CPU_QUOTA="200%"
-
-          if [ "$K6_MEMORY_MAX" -le 0 ]; then
-            echo "::error::Insufficient RAM."
-            exit 1
-          fi
-
-          echo "================================"
-          echo "K6 RESOURCE LIMIT"
-          echo "================================"
-          echo "Total RAM: $((TOTAL_RAM_BYTES / 1024 / 1024)) MB"
-          echo "Reserved RAM: 1024 MB"
-          echo "K6 Memory High: $((K6_MEMORY_HIGH / 1024 / 1024)) MB"
-          echo "K6 Memory Max: $((K6_MEMORY_MAX / 1024 / 1024)) MB"
-          echo "CPU Quota: $CPU_QUOTA"
-          echo "================================"
-
-          # ----------------------------------------
-          # MIMIR CONFIGURATION
-          # ----------------------------------------
+          export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
 
           K6_ARGS=()
 
@@ -304,97 +171,56 @@ jobs:
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
-          # ----------------------------------------
-          # START HOST + KUBERNETES RESOURCE SAMPLER
-          # ----------------------------------------
-
-          mkdir -p k6-browser-results
-          python3 resource-monitor.py \
-            --output k6-browser-results/resource-monitor.csv \
-            --interval 2 &
-          RESOURCE_MONITOR_PID=$!
-          echo "Resource monitor PID: ${RESOURCE_MONITOR_PID}"
-
-          # ----------------------------------------
-          # RUN K6 INSIDE SYSTEMD RESOURCE SCOPE
-          # ----------------------------------------
-
-          echo "Starting K6 inside resource-limited systemd scope."
-
           set +e
 
-          systemd-run \
-            --user \
-            --scope \
-            --property="MemoryHigh=${K6_MEMORY_HIGH}" \
-            --property="MemoryMax=${K6_MEMORY_MAX}" \
-            --property="CPUQuota=${CPU_QUOTA}" \
-            -- \
-            k6 run \
-              --out json=/tmp/k6-browser-raw.json \
-              "${K6_ARGS[@]}" \
-              --tag testid="github-${GITHUB_RUN_ID}" \
-              --tag application="toko-coquette" \
-              --tag test_category="browser" \
-              --summary-export "$SUMMARY_FILE" \
-              "$SCRIPT"
+          k6 run \
+            --out json=k6-browser-results/k6-raw.json \
+            "${K6_ARGS[@]}" \
+            --tag testid="github-${GITHUB_RUN_ID}" \
+            --tag application="toko-coquette" \
+            --tag test_category="browser" \
+            --summary-export k6-browser-results/capacity-summary.json \
+            "$SCRIPT" 2>&1 | tee k6-browser-results/k6-console.log
 
-          K6_EXIT_CODE=$?
+          K6_EXIT_CODE=${PIPESTATUS[0]}
 
           set -e
-
-          # Stop sampler cleanly after K6 has completed.
-          kill -TERM "$RESOURCE_MONITOR_PID" 2>/dev/null || true
-          wait "$RESOURCE_MONITOR_PID" 2>/dev/null || true
 
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
 
-          echo "K6 exit code: $K6_EXIT_CODE"
+          FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
+
+          python3 - "$TEST_TYPE" "$TARGET_URL" "$STARTED_AT" "$STARTED_MS" "$FINISHED_AT" "$FINISHED_MS" "$MAX_VUS" "$VUS_STEP" "$STAGE_DURATION" "$FAILURE_RATE_LIMIT" "$K6_EXIT_CODE" "$GITHUB_RUN_NUMBER" <<'PY'
+          import json,sys
+
+          keys = [
+              "test_type", "target_url", "started_at", "started_at_ms",
+              "finished_at", "finished_at_ms", "max_vus", "vus_step",
+              "stage_duration", "failure_rate_limit", "k6_exit_code",
+              "run_number"
+          ]
+
+          vals = sys.argv[1:]
+          obj = dict(zip(keys, vals))
+
+          for k in [
+              "started_at_ms", "finished_at_ms", "max_vus",
+              "vus_step", "k6_exit_code", "run_number"
+          ]:
+              obj[k] = int(obj[k])
+
+          with open("k6-browser-results/run-metadata.json", "w") as f:
+              json.dump(obj, f, indent=2)
+          PY
+
+          echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
 
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
           echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
 
-          python3 - "$TEST_TYPE" "$TARGET_URL" "$STARTED_AT" "$STARTED_MS" "$FINISHED_AT" "$FINISHED_MS" "$MAX_VUS" "$VUS_STEP" "$STAGE_DURATION" "$FAILURE_RATE_LIMIT" "$K6_EXIT_CODE" "$GITHUB_RUN_NUMBER" <<'PY'
-          import json
-          import sys
-
-          keys = [
-              "test_type",
-              "target_url",
-              "started_at",
-              "started_at_ms",
-              "finished_at",
-              "finished_at_ms",
-              "max_vus",
-              "vus_step",
-              "stage_duration",
-              "failure_rate_limit",
-              "k6_exit_code",
-              "run_number"
-          ]
-
-          data = dict(zip(keys, sys.argv[1:]))
-
-          for key in [
-              "started_at_ms",
-              "finished_at_ms",
-              "max_vus",
-              "vus_step",
-              "k6_exit_code",
-              "run_number"
-          ]:
-              data[key] = int(str(data[key]).strip().strip('"').strip("'"))
-
-          with open("/tmp/k6-run-metadata.json", "w") as f:
-              json.dump(data, f, indent=2)
-          PY
-
           exit 0
 
-      # ==========================================
-      # 8. CAPACITY RECOVERY CHECK
-      # ==========================================
       - name: Measure homepage recovery after capacity test
         if: always() && inputs.test_type == 'capacity' && steps.k6.outcome != 'skipped'
         shell: bash
@@ -405,20 +231,19 @@ jobs:
           START_MS="${START_MS:-$(date +%s%3N)}"
 
           DEADLINE=$(( $(date +%s) + RECOVERY_TIMEOUT_MINUTES * 60 ))
-
           CONSECUTIVE=0
           RECOVERED=false
           RECOVERED_AT_MS=0
 
+          echo "timestamp,http_status,result" > k6-browser-results/recovery-probes.csv
+
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
             NOW="$(date +%s%3N)"
-
-            CODE="$(curl -sS -L --max-time 10 \
-              -o /dev/null -w '%{http_code}' "$TARGET_URL" || true)"
+            CODE="$(curl -sS -L --max-time 10 -o /dev/null -w '%{http_code}' "$TARGET_URL" || true)"
 
             if [[ "$CODE" =~ ^2[0-9][0-9]$ ]]; then
               CONSECUTIVE=$((CONSECUTIVE + 1))
-              echo "Recovery probe: HTTP $CODE ($CONSECUTIVE/3)"
+              echo "$NOW,$CODE,success" >> k6-browser-results/recovery-probes.csv
 
               if [ "$CONSECUTIVE" -ge 3 ]; then
                 RECOVERED=true
@@ -427,7 +252,7 @@ jobs:
               fi
             else
               CONSECUTIVE=0
-              echo "Recovery probe failed: HTTP $CODE"
+              echo "$NOW,$CODE,failure" >> k6-browser-results/recovery-probes.csv
             fi
 
             sleep 5
@@ -439,229 +264,76 @@ jobs:
             RECOVERY_DURATION_MS=""
           fi
 
-          python3 - "$RECOVERED" "$START_MS" "$RECOVERED_AT_MS" "$RECOVERY_DURATION_MS" <<'PY'
-          import json
-          import sys
-          from datetime import datetime, timezone
+          FIRST_FAILURE="$(cat k6-browser-results/first-failure-timestamp-ms.txt 2>/dev/null || true)"
 
-          recovered, start, end, duration = sys.argv[1:]
+          python3 - "$RECOVERED" "$START_MS" "$RECOVERED_AT_MS" "$RECOVERY_DURATION_MS" "$FIRST_FAILURE" <<'PY'
+          import json,sys,datetime
 
-          def to_iso(value):
-              if not value or value == "0":
-                  return None
-              return datetime.fromtimestamp(
-                  int(value) / 1000,
-                  timezone.utc
-              ).isoformat()
+          recovered,start,at,duration,first = sys.argv[1:]
 
-          data = {
+          def iso(ms):
+              return datetime.datetime.fromtimestamp(
+                  int(ms)/1000,
+                  datetime.timezone.utc
+              ).isoformat() if ms and ms.isdigit() and int(ms)>0 else None
+
+          obj = {
               "recovered": recovered == "true",
               "recovery_started_at_ms": int(start),
-              "recovered_at_ms": int(end) if end else None,
+              "recovered_at_ms": int(at) if at else None,
               "recovery_duration_ms": int(duration) if duration else None,
-              "recovery_started_at": to_iso(start),
-              "recovered_at": to_iso(end),
+              "recovery_started_at": iso(start),
+              "recovered_at": iso(at),
+              "first_failure_at_ms": int(first) if first.isdigit() else None,
+              "first_failure_at": iso(first),
               "probe_interval_seconds": 5,
               "required_consecutive_successes": 3
           }
 
-          with open("k6-browser-results/k6-capacity-recovery.json", "w") as f:
-              json.dump(data, f, indent=2)
+          with open("k6-browser-results/recovery.json", "w") as f:
+              json.dump(obj, f, indent=2)
           PY
 
           if [ "$RECOVERED" != true ]; then
             echo "::warning::Homepage did not recover within ${RECOVERY_TIMEOUT_MINUTES} minutes."
           fi
 
-      # ==========================================
-      # 9. COPY RAW JSON AND CONVERT TO JMETER JTL
-      # ==========================================
-      - name: Convert K6 Browser results to JMeter JTL
+      - name: Convert K6 raw JSON to JMeter JTL
         if: always()
         shell: bash
         run: |
           set -euo pipefail
 
-          RAW_FILE="/tmp/k6-browser-raw.json"
-          RAW_COPY="k6-browser-results/k6-${TEST_TYPE}-raw.json"
+          RAW_FILE="k6-browser-results/k6-raw.json"
+          JTL_FILE="k6-browser-results/k6-browser-results.jtl"
 
           if [ ! -s "$RAW_FILE" ]; then
-            echo "::error::K6 raw JSON is missing or empty."
-            exit 1
+            echo "::warning::K6 raw JSON not found or empty. JTL generation skipped."
+            exit 0
           fi
 
-          cp "$RAW_FILE" "$RAW_COPY"
+          python3 convert_k6_json_to_jtl.py "$RAW_FILE" "$JTL_FILE"
 
-          node <<'NODE'
-          const fs = require('fs');
-
-          const input = '/tmp/k6-browser-raw.json';
-          const output = process.env.JTL_FILE;
-
-          const headers = [
-            'timeStamp',
-            'elapsed',
-            'label',
-            'responseCode',
-            'responseMessage',
-            'threadName',
-            'dataType',
-            'success',
-            'failureMessage',
-            'bytes',
-            'sentBytes',
-            'grpThreads',
-            'allThreads',
-            'URL',
-            'Latency',
-            'IdleTime',
-            'Connect'
-          ];
-
-          function csvValue(value) {
-            if (value === null || value === undefined) return '';
-
-            const text = String(value);
-
-            if (/[",\r\n]/.test(text)) {
-              return '"' + text.replace(/"/g, '""') + '"';
-            }
-
-            return text;
-          }
-
-          const lines = fs.readFileSync(input, 'utf8')
-            .split(/\r?\n/)
-            .filter(Boolean);
-
-          const rows = [headers.join(',')];
-
-          let exported = 0;
-
-          for (const line of lines) {
-            let event;
-
-            try {
-              event = JSON.parse(line);
-            } catch {
-              continue;
-            }
-
-            if (
-              event.type !== 'Point' ||
-              event.metric !== 'iteration_duration' ||
-              !event.data
-            ) {
-              continue;
-            }
-
-            const timestamp = Date.parse(event.data.time);
-            const elapsed = Math.round(Number(event.data.value));
-
-            if (
-              !Number.isFinite(timestamp) ||
-              !Number.isFinite(elapsed) ||
-              elapsed < 0
-            ) {
-              continue;
-            }
-
-            const tags = event.data.tags || {};
-
-            const row = [
-              timestamp,
-              elapsed,
-              'K6 Browser - Product Iteration',
-              '0',
-              'Iteration duration; HTTP status not measured',
-              tags.scenario || 'product_browser',
-              'text',
-              'true',
-              '',
-              0,
-              0,
-              0,
-              0,
-              '',
-              0,
-              0,
-              0
-            ];
-
-            rows.push(row.map(csvValue).join(','));
-            exported++;
-          }
-
-          fs.writeFileSync(output, rows.join('\n') + '\n');
-
-          console.log(`Exported iterations: ${exported}`);
-
-          if (exported === 0) {
-            console.error('No iteration_duration samples found.');
-            process.exitCode = 1;
-          }
-          NODE
-
-          ls -lh "$RAW_COPY" "$JTL_FILE"
-          wc -l "$JTL_FILE"
-
-      # ==========================================
-      # 10. GENERATE FULL HTML DASHBOARD
-      # ==========================================
-      - name: Generate browser performance dashboard
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p k6-browser-results
-          if [ -f /tmp/k6-run-metadata.json ]; then
-            cp /tmp/k6-run-metadata.json k6-browser-results/run-metadata.json
-          fi
-          if [ -f "$RECOVERY_FILE" ]; then
-            cp "$RECOVERY_FILE" k6-browser-results/recovery.json
-          elif [ -f k6-browser-results/k6-capacity-recovery.json ]; then
-            cp k6-browser-results/k6-capacity-recovery.json k6-browser-results/recovery.json
-          fi
-          node generate-browser-report.js k6-browser-results
-          test -s k6-browser-results/browser-report.html
-
-      # ==========================================
-      # 11. UPLOAD RESULTS
-      # ==========================================
-      - name: Upload K6 Results, Resource Metrics and HTML Dashboard
+      - name: Upload JTL and raw results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: toko-coquette-${{ inputs.test_type }}-results-${{ github.run_number }}
-          path: |
-            k6-browser-results/*-results-fixed.jtl
-            k6-browser-results/*-capacity-summary.json
-            k6-browser-results/*-recovery.json
-            k6-browser-results/*-raw.json
-            k6-browser-results/resource-monitor.csv
-            k6-browser-results/run-metadata.json
-            k6-browser-results/recovery.json
-            k6-browser-results/browser-report.html
+          name: toko-coquette-${{ inputs.test_type }}-jmeter-jtl-${{ github.run_number }}
+          path: k6-browser-results/
           if-no-files-found: warn
           retention-days: 30
 
-      # ==========================================
-      # 12. STOP MIMIR PORT-FORWARD
-      # ==========================================
       - name: Stop Mimir port-forward
         if: always()
         shell: bash
         run: |
-          if [ -f /tmp/k6-mimir-port-forward.pid ]; then
-            kill "$(cat /tmp/k6-mimir-port-forward.pid)" 2>/dev/null || true
+          if [ -f k6-browser-results/mimir-port-forward.pid ]; then
+            kill "$(cat k6-browser-results/mimir-port-forward.pid)" 2>/dev/null || true
           fi
 
-      # ==========================================
-      # 13. MARK WORKFLOW FAILED IF K6 FAILED
-      # ==========================================
       - name: Mark workflow failed when K6 failed
         if: steps.k6.outputs.k6_exit_code != '0'
         shell: bash
         run: |
-          echo "K6 failed. Check the generated JTL and summary artifact."
+          echo "K6 failed. See uploaded artifact."
           exit 1

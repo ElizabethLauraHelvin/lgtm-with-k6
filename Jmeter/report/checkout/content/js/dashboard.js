@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 138, 0, 0.0, 6850.543478260868, 6455, 8049, 6770.5, 7163.5, 7262.1, 7785.35999999999, 0.505711238882598, 0.0, 0.0], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["K6 Browser - Product Iteration", 138, 0, 0.0, 6850.543478260868, 6455, 8049, 6770.5, 7163.5, 7262.1, 7785.35999999999, 0.505711238882598, 0.0, 0.0], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 138, 0, 0.0, 6841.152173913042, 6333, 7919, 6748.0, 7142.0, 7236.55, 7724.7799999999925, 0.5083528263312029, 0.0, 0.0], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["K6 Browser - Product Iteration", 138, 0, 0.0, 6841.152173913042, 6333, 7919, 6748.0, 7142.0, 7236.55, 7724.7799999999925, 0.5083528263312029, 0.0, 0.0], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:
