@@ -183,34 +183,37 @@ async function checkoutReview(page) {
     'Payment method should be QRIS'
   );
 
-  // Register response listener BEFORE clicking submit.
-  // This verifies the actual backend POST /api/orders request.
-  const orderResponsePromise = page.waitForResponse(
-    response => {
-      return (
-        response.request().method() === 'POST' &&
-        response.url().includes('/api/orders')
-      );
-    },
-    {
-      timeout: 20000,
-    }
+  
+  // Register listeners BEFORE clicking submit
+  const orderRequestPromise = page.waitForRequest(
+    '/api/orders',
+    { timeout: 20000 }
   );
 
-  // Click "Buat Pesanan"
+  const orderResponsePromise = page.waitForResponse(
+    '/api/orders',
+    { timeout: 20000 }
+  );
+
+  // Submit actual order
   await page.locator('#co_go').click();
 
-  // Wait for backend response
-  const orderResponse = await orderResponsePromise;
-
-  const status = orderResponse.status();
+  // Verify request method
+  const orderRequest = await orderRequestPromise;
 
   assert(
-    status === 201,
-    `POST /api/orders should return HTTP 201, received ${status}`
+    orderRequest.method() === 'POST',
+    'Order request method should be POST'
   );
 
-  // Read response body
+  // Verify backend response
+  const orderResponse = await orderResponsePromise;
+
+  assert(
+    orderResponse.status() === 201,
+    `POST /api/orders should return HTTP 201, received ${orderResponse.status()}`
+  );
+
   const orderData = await orderResponse.json();
 
   assert(
@@ -219,11 +222,12 @@ async function checkoutReview(page) {
   );
 
   console.log(
-    `ORDER_CREATED id=${orderData.id} status=${status} payment=${payment} shipping=${shipping}`
+    `ORDER_CREATED id=${orderData.id} status=${orderResponse.status()}`
   );
 
   return orderData;
 }
+
 
 export async function runJourney(
   page,
@@ -294,11 +298,11 @@ export async function runJourney(
     if (recordMetrics) {
       journeyFailures.add(1);
       firstFailureTimestamp.add(Date.now());
-      failureVus.add(exec.instance.vusActive);
+      failureVus.add(__VU);
     }
 
     console.error(
-      `BROWSER_JOURNEY_FAILURE timestamp_ms=${Date.now()} active_vus=${exec.instance.vusActive} type=${type} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
+      `BROWSER_JOURNEY_FAILURE timestamp_ms=${Date.now()} active_vus=${__VU} type=${type} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
     );
 
     throw error;

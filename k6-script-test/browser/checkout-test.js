@@ -9,7 +9,7 @@ const failureRateLimit = Math.min(
   Math.max(0.01, Number(__ENV.FAILURE_RATE_LIMIT || 0.10))
 );
 
-const maxRecoveryAttempts = 1;
+const maxRecoveryAttempts = 0;
 const recoveryDelaySeconds = 3;
 
 const browserSessionSuccess = new Rate('browser_session_success');
