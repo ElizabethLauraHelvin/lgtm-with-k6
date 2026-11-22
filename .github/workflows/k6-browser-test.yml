@@ -51,13 +51,13 @@ jobs:
     steps:
 
       # ==========================================
-      # 1. CHECKOUT REPOSITORY
+      # 1. CHECKOUT
       # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # ==========================================
-      # 2. SETUP NODE.JS
+      # 2. NODE.JS
       # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,7 +65,7 @@ jobs:
           node-version: "22"
 
       # ==========================================
-      # 3. SETUP K6 BROWSER
+      # 3. K6 BROWSER
       # ==========================================
       - name: Setup k6 with browser support
         uses: grafana/setup-k6-action@v1
@@ -73,7 +73,7 @@ jobs:
           browser: true
 
       # ==========================================
-      # 4. VALIDATE RUNNER AND APPLICATION
+      # 4. VALIDATE RUNNER
       # ==========================================
       - name: Validate runner and application
         shell: bash
@@ -84,6 +84,7 @@ jobs:
           command -v curl
           command -v node
           command -v python3
+          command -v systemd-run
 
           k6 version
 
@@ -95,20 +96,20 @@ jobs:
           case "$TEST_TYPE" in
             capacity|login|cart|checkout|journey)
               if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
-                echo "::error::Skenario $TEST_TYPE memerlukan K6_TEST_EMAIL dan K6_TEST_PASSWORD."
+                echo "::error::Missing K6_TEST_EMAIL or K6_TEST_PASSWORD."
                 exit 1
               fi
               ;;
             homepage|product)
               ;;
             *)
-              echo "::error::Skenario tidak dikenal: $TEST_TYPE"
+              echo "::error::Unknown test type: $TEST_TYPE"
               exit 1
               ;;
           esac
 
       # ==========================================
-      # 5. SELECT SCRIPT AND OUTPUT FILES
+      # 5. SELECT SCRIPT
       # ==========================================
       - name: Select script and prepare results
         id: select
@@ -153,8 +154,6 @@ jobs:
           echo "RECOVERY_FILE=k6-browser-results/k6-${TEST_TYPE}-recovery.json" >> "$GITHUB_ENV"
 
           echo "Selected script: $SCRIPT"
-          echo "JTL: k6-${TEST_TYPE}-results-fixed.jtl"
-          echo "Summary: k6-${TEST_TYPE}-capacity-summary.json"
 
       # ==========================================
       # 6. START MIMIR PORT-FORWARD
@@ -179,11 +178,10 @@ jobs:
                 echo "Mimir is ready."
                 exit 0
               fi
-
               sleep 2
             done
 
-            echo "Mimir not ready; continuing without remote write."
+            echo "Mimir unavailable; continuing without remote write."
           else
             echo "Mimir unavailable; continuing without remote write."
           fi
@@ -191,7 +189,7 @@ jobs:
           echo "enabled=false" >> "$GITHUB_OUTPUT"
 
       # ==========================================
-      # 7. RUN SELECTED K6 BROWSER SCENARIO
+      # 7. RUN K6 WITH RESOURCE LIMITS
       # ==========================================
       - name: Run selected browser scenario
         id: k6
@@ -217,6 +215,46 @@ jobs:
           export TEST_EMAIL
           export TEST_PASSWORD
 
+          # ----------------------------------------
+          # RESOURCE LIMIT CONFIGURATION
+          # VM: 8 GB RAM / 4 vCPU
+          # Reserve: 1 GB RAM
+          # K6: maximum 7 GB RAM
+          # K6: maximum 2 vCPU
+          # ----------------------------------------
+
+          TOTAL_RAM_BYTES=$(awk '/MemTotal/ {print $2 * 1024}' /proc/meminfo)
+
+          RESERVED_RAM_BYTES=$((1024 * 1024 * 1024))
+
+          K6_MEMORY_MAX=$((TOTAL_RAM_BYTES - RESERVED_RAM_BYTES))
+
+          K6_MEMORY_HIGH=$((K6_MEMORY_MAX * 90 / 100))
+
+          CPU_QUOTA="200%"
+
+          if [ "$K6_MEMORY_MAX" -le 0 ]; then
+            echo "::error::Insufficient RAM."
+            exit 1
+          fi
+
+          echo "================================"
+          echo "K6 RESOURCE LIMIT"
+          echo "================================"
+          echo "Total RAM: $((TOTAL_RAM_BYTES / 1024 / 1024)) MB"
+          echo "Reserved RAM: 1024 MB"
+          echo "K6 Memory High: $((K6_MEMORY_HIGH / 1024 / 1024)) MB"
+          echo "K6 Memory Max: $((K6_MEMORY_MAX / 1024 / 1024)) MB"
+          echo "CPU Quota: $CPU_QUOTA"
+          echo "================================"
+
+          # Check user systemd manager
+          if ! systemctl --user is-system-running >/dev/null 2>&1; then
+            echo "::error::User systemd manager is unavailable."
+            echo "Enable lingering or configure the runner user systemd manager first."
+            exit 1
+          fi
+
           K6_ARGS=()
 
           if [ "$MIMIR_ENABLED" = "true" ]; then
@@ -229,22 +267,26 @@ jobs:
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
-          echo "================================"
-          echo "Starting K6 Browser Test"
-          echo "Scenario: $TEST_TYPE"
-          echo "Target: $TARGET_URL"
-          echo "================================"
+          echo "Starting K6 inside resource-limited systemd scope."
 
           set +e
 
-          k6 run \
-            --out json=/tmp/k6-browser-raw.json \
-            "${K6_ARGS[@]}" \
-            --tag testid="github-${GITHUB_RUN_ID}" \
-            --tag application="toko-coquette" \
-            --tag test_category="browser" \
-            --summary-export "$SUMMARY_FILE" \
-            "$SCRIPT"
+          systemd-run \
+            --user \
+            --scope \
+            --wait \
+            --property="MemoryHigh=${K6_MEMORY_HIGH}" \
+            --property="MemoryMax=${K6_MEMORY_MAX}" \
+            --property="CPUQuota=${CPU_QUOTA}" \
+            -- \
+            k6 run \
+              --out json=/tmp/k6-browser-raw.json \
+              "${K6_ARGS[@]}" \
+              --tag testid="github-${GITHUB_RUN_ID}" \
+              --tag application="toko-coquette" \
+              --tag test_category="browser" \
+              --summary-export "$SUMMARY_FILE" \
+              "$SCRIPT"
 
           K6_EXIT_CODE=$?
 
@@ -297,7 +339,6 @@ jobs:
 
       # ==========================================
       # 8. CAPACITY RECOVERY CHECK
-      # ONLY FOR CAPACITY SCENARIO
       # ==========================================
       - name: Measure homepage recovery after capacity test
         if: always() && inputs.test_type == 'capacity' && steps.k6.outcome != 'skipped'
@@ -315,7 +356,6 @@ jobs:
           RECOVERED_AT_MS=0
 
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-
             NOW="$(date +%s%3N)"
 
             CODE="$(curl -sS -L --max-time 10 \
@@ -323,7 +363,6 @@ jobs:
 
             if [[ "$CODE" =~ ^2[0-9][0-9]$ ]]; then
               CONSECUTIVE=$((CONSECUTIVE + 1))
-
               echo "Recovery probe: HTTP $CODE ($CONSECUTIVE/3)"
 
               if [ "$CONSECUTIVE" -ge 3 ]; then
@@ -355,7 +394,6 @@ jobs:
           def to_iso(value):
               if not value or value == "0":
                   return None
-
               return datetime.fromtimestamp(
                   int(value) / 1000,
                   timezone.utc
@@ -382,7 +420,6 @@ jobs:
 
       # ==========================================
       # 9. COPY RAW JSON AND CONVERT TO JMETER JTL
-      # USE iteration_duration METRIC
       # ==========================================
       - name: Convert K6 Browser results to JMeter JTL
         if: always()
@@ -398,11 +435,7 @@ jobs:
             exit 1
           fi
 
-          # Preserve original raw JSON
           cp "$RAW_FILE" "$RAW_COPY"
-
-          echo "Raw JSON copied:"
-          ls -lh "$RAW_COPY"
 
           node <<'NODE'
           const fs = require('fs');
@@ -431,9 +464,7 @@ jobs:
           ];
 
           function csvValue(value) {
-            if (value === null || value === undefined) {
-              return '';
-            }
+            if (value === null || value === undefined) return '';
 
             const text = String(value);
 
@@ -451,7 +482,6 @@ jobs:
           const rows = [headers.join(',')];
 
           let exported = 0;
-          let invalid = 0;
 
           for (const line of lines) {
             let event;
@@ -459,7 +489,6 @@ jobs:
             try {
               event = JSON.parse(line);
             } catch {
-              invalid++;
               continue;
             }
 
@@ -508,34 +537,21 @@ jobs:
             exported++;
           }
 
-          fs.writeFileSync(
-            output,
-            rows.join('\n') + '\n',
-            'utf8'
-          );
+          fs.writeFileSync(output, rows.join('\n') + '\n');
 
-          console.log('================================');
-          console.log('K6 TO JMETER JTL CONVERSION');
-          console.log('================================');
-          console.log(`Raw JSON events: ${lines.length}`);
-          console.log(`Invalid JSON lines: ${invalid}`);
           console.log(`Exported iterations: ${exported}`);
-          console.log(`JTL output: ${output}`);
 
           if (exported === 0) {
-            console.error(
-              'No iteration_duration samples found. JTL contains only its header.'
-            );
+            console.error('No iteration_duration samples found.');
             process.exitCode = 1;
           }
           NODE
 
-          echo "JTL file information:"
-          ls -lh "$JTL_FILE"
+          ls -lh "$RAW_COPY" "$JTL_FILE"
           wc -l "$JTL_FILE"
 
       # ==========================================
-      # 10. UPLOAD JTL, SUMMARY, RECOVERY AND RAW JSON
+      # 10. UPLOAD RESULTS
       # ==========================================
       - name: Upload K6 Results and Raw JSON
         if: always()
