@@ -381,9 +381,10 @@ jobs:
           fi
 
       # ==========================================
-      # 9. COPY RAW JSON AND CONVERT TO JTL
+      # 9. COPY RAW JSON AND CONVERT TO JMETER JTL
+      # USE iteration_duration METRIC
       # ==========================================
-      - name: Convert K6 results to JMeter JTL Fixed Format
+      - name: Convert K6 Browser results to JMeter JTL
         if: always()
         shell: bash
         run: |
@@ -392,17 +393,16 @@ jobs:
           RAW_FILE="/tmp/k6-browser-raw.json"
           RAW_COPY="k6-browser-results/k6-${TEST_TYPE}-raw.json"
 
-          if [ ! -f "$RAW_FILE" ]; then
-            echo "::error::K6 raw JSON was not generated."
+          if [ ! -s "$RAW_FILE" ]; then
+            echo "::error::K6 raw JSON is missing or empty."
             exit 1
           fi
 
-          # Preserve original K6 raw JSON for debugging
+          # Preserve original raw JSON
           cp "$RAW_FILE" "$RAW_COPY"
 
-          echo "Raw JSON copied to: $RAW_COPY"
-          echo "Raw JSON size:"
-          du -h "$RAW_COPY"
+          echo "Raw JSON copied:"
+          ls -lh "$RAW_COPY"
 
           node <<'NODE'
           const fs = require('fs');
@@ -435,10 +435,6 @@ jobs:
               return '';
             }
 
-            if (typeof value === 'number' || typeof value === 'boolean') {
-              return String(value);
-            }
-
             const text = String(value);
 
             if (/[",\r\n]/.test(text)) {
@@ -448,10 +444,6 @@ jobs:
             return text;
           }
 
-          function csvRow(values) {
-            return values.map(csvValue).join(',');
-          }
-
           const lines = fs.readFileSync(input, 'utf8')
             .split(/\r?\n/)
             .filter(Boolean);
@@ -459,6 +451,7 @@ jobs:
           const rows = [headers.join(',')];
 
           let exported = 0;
+          let invalid = 0;
 
           for (const line of lines) {
             let event;
@@ -466,73 +459,52 @@ jobs:
             try {
               event = JSON.parse(line);
             } catch {
+              invalid++;
               continue;
             }
 
             if (
               event.type !== 'Point' ||
-              !event.data ||
-              !event.metric
+              event.metric !== 'iteration_duration' ||
+              !event.data
             ) {
               continue;
             }
+
+            const timestamp = Date.parse(event.data.time);
+            const elapsed = Math.round(Number(event.data.value));
 
             if (
-              event.metric !== 'browser_http_req_duration' &&
-              event.metric !== 'http_req_duration'
+              !Number.isFinite(timestamp) ||
+              !Number.isFinite(elapsed) ||
+              elapsed < 0
             ) {
               continue;
             }
 
-            const data = event.data;
-            const tags = data.tags || {};
-
-            const timestamp = data.time
-              ? new Date(data.time).getTime()
-              : 0;
-
-            const elapsed = Math.round(Number(data.value || 0));
-
-            const status = tags.status
-              ? Number(tags.status)
-              : 0;
-
-            const url = tags.url || '';
-
-            const label =
-              tags.name ||
-              url ||
-              event.metric;
-
-            const success =
-              status >= 200 && status < 400;
-
-            const failureMessage =
-              status >= 400
-                ? `HTTP ${status}`
-                : '';
+            const tags = event.data.tags || {};
 
             const row = [
               timestamp,
               elapsed,
-              label,
-              status,
-              '',
-              'K6 Browser (source)',
+              'K6 Browser - Product Iteration',
+              '0',
+              'Iteration duration; HTTP status not measured',
+              tags.scenario || 'product_browser',
               'text',
-              success,
-              failureMessage,
+              'true',
+              '',
               0,
               0,
               0,
               0,
-              url,
+              '',
               0,
               0,
               0
             ];
 
-            rows.push(csvRow(row));
+            rows.push(row.map(csvValue).join(','));
             exported++;
           }
 
@@ -543,16 +515,24 @@ jobs:
           );
 
           console.log('================================');
-          console.log('K6 JTL FIXED FORMAT GENERATED');
+          console.log('K6 TO JMETER JTL CONVERSION');
           console.log('================================');
-          console.log(`Output: ${output}`);
-          console.log(`Total HTTP samples: ${exported}`);
+          console.log(`Raw JSON events: ${lines.length}`);
+          console.log(`Invalid JSON lines: ${invalid}`);
+          console.log(`Exported iterations: ${exported}`);
+          console.log(`JTL output: ${output}`);
 
           if (exported === 0) {
-            console.error('No HTTP duration samples found.');
+            console.error(
+              'No iteration_duration samples found. JTL contains only its header.'
+            );
             process.exitCode = 1;
           }
           NODE
+
+          echo "JTL file information:"
+          ls -lh "$JTL_FILE"
+          wc -l "$JTL_FILE"
 
       # ==========================================
       # 10. UPLOAD JTL, SUMMARY, RECOVERY AND RAW JSON
