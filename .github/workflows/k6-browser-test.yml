@@ -315,7 +315,6 @@ jobs:
           systemd-run \
             --user \
             --scope \
-            --wait \
             --property="MemoryHigh=${K6_MEMORY_HIGH}" \
             --property="MemoryMax=${K6_MEMORY_MAX}" \
             --property="CPUQuota=${CPU_QUOTA}" \
