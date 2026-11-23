@@ -433,6 +433,34 @@ jobs:
             echo "::warning::Homepage did not recover within ${RECOVERY_TIMEOUT_MINUTES} minutes."
           fi
 
+      - name: Generate HTML performance report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RAW_FILE="k6-browser-results/k6-raw.json"
+          REPORT_FILE="k6-browser-results/index.html"
+
+          if [ ! -s "$RAW_FILE" ]; then
+            echo "::warning::K6 raw JSON not found or empty. HTML report generation skipped."
+            exit 0
+          fi
+
+          python3 generate-k6-capacity-report.py \
+            "$RAW_FILE" "$REPORT_FILE" \
+            --max-p95-ms "$MAX_P95_MS" \
+            --max-error-rate 1.0 \
+            --title "Toko Coquette - ${TEST_TYPE} Performance Report" \
+            --test-type "$TEST_TYPE" \
+            --summary-file "k6-browser-results/capacity-summary.json" \
+            --metadata-file "k6-browser-results/run-metadata.json" \
+            --recovery-file "k6-browser-results/recovery.json" \
+            --memory-file "k6-browser-results/host-memory.csv"
+
+          test -s "$REPORT_FILE"
+          echo "HTML report generated: $REPORT_FILE"
+
       - name: Convert K6 raw JSON to JMeter JTL
         if: always()
         shell: bash
