@@ -5,7 +5,7 @@
   /          \   |   (  |  (‾)  |
  / __________ \  |_|\_\  \_____/ 
 
-time="2026-11-23T02:51:37Z" level=warning msg="experimental-prometheus-rw output has been deprecated and is planned for removal in k6 v3. We recommend using opentelemetry for all your metrics output."
+time="2026-11-23T03:03:21Z" level=warning msg="experimental-prometheus-rw output has been deprecated and is planned for removal in k6 v3. We recommend using opentelemetry for all your metrics output."
 
      execution: local
         script: k6-script-test/browser/capacity-automated-test.js
@@ -41,6 +41,7 @@ browser_capacity   [   3% ] 01/50 VUs  0m08.0s/5m15.0s
 
 running (0m09.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
 browser_capacity   [   3% ] 01/50 VUs  0m09.0s/5m15.0s
+time="2026-11-23T03:03:31Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=0 order_id=PBMWSOLHM7 status=201" source=console
 
 running (0m10.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
 browser_capacity   [   3% ] 01/50 VUs  0m10.0s/5m15.0s
@@ -48,146 +49,606 @@ browser_capacity   [   3% ] 01/50 VUs  0m10.0s/5m15.0s
 running (0m11.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
 browser_capacity   [   3% ] 01/50 VUs  0m11.0s/5m15.0s
 
-running (0m12.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+running (0m12.0s), 01/50 VUs, 1 complete and 0 interrupted iterations
 browser_capacity   [   4% ] 01/50 VUs  0m12.0s/5m15.0s
 
-running (0m13.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m13.0s), 02/50 VUs, 1 complete and 0 interrupted iterations
 browser_capacity   [   4% ] 02/50 VUs  0m13.0s/5m15.0s
 
-running (0m14.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m14.0s), 02/50 VUs, 1 complete and 0 interrupted iterations
 browser_capacity   [   4% ] 02/50 VUs  0m14.0s/5m15.0s
+time="2026-11-23T03:03:36Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=1 order_id=PBMWSOLLIH status=201" source=console
 
-running (0m15.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m15.0s), 02/50 VUs, 1 complete and 0 interrupted iterations
 browser_capacity   [   5% ] 02/50 VUs  0m15.0s/5m15.0s
+time="2026-11-23T03:03:37Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=0 order_id=PBMWSOLM8U status=201" source=console
 
-running (0m16.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m16.0s), 02/50 VUs, 1 complete and 0 interrupted iterations
 browser_capacity   [   5% ] 02/50 VUs  0m16.0s/5m15.0s
 
-running (0m17.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m17.0s), 02/50 VUs, 2 complete and 0 interrupted iterations
 browser_capacity   [   5% ] 02/50 VUs  0m17.0s/5m15.0s
 
-running (0m18.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+running (0m18.0s), 02/50 VUs, 3 complete and 0 interrupted iterations
 browser_capacity   [   6% ] 02/50 VUs  0m18.0s/5m15.0s
 
-running (0m19.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m19.0s), 03/50 VUs, 3 complete and 0 interrupted iterations
 browser_capacity   [   6% ] 03/50 VUs  0m19.0s/5m15.0s
 
-running (0m20.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m20.0s), 03/50 VUs, 3 complete and 0 interrupted iterations
 browser_capacity   [   6% ] 03/50 VUs  0m20.0s/5m15.0s
+time="2026-11-23T03:03:41Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=2 order_id=PBMWSOLPF8 status=201" source=console
 
-running (0m21.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m21.0s), 03/50 VUs, 3 complete and 0 interrupted iterations
 browser_capacity   [   7% ] 03/50 VUs  0m21.0s/5m15.0s
+time="2026-11-23T03:03:42Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=1 order_id=PBMWSOLQ5L status=201" source=console
+time="2026-11-23T03:03:43Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=0 order_id=PBMWSOLQVI status=201" source=console
 
-running (0m22.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m22.0s), 03/50 VUs, 4 complete and 0 interrupted iterations
 browser_capacity   [   7% ] 03/50 VUs  0m22.0s/5m15.0s
 
-running (0m23.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m23.0s), 03/50 VUs, 5 complete and 0 interrupted iterations
 browser_capacity   [   7% ] 03/50 VUs  0m23.0s/5m15.0s
 
-running (0m24.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+running (0m24.0s), 03/50 VUs, 6 complete and 0 interrupted iterations
 browser_capacity   [   8% ] 03/50 VUs  0m24.0s/5m15.0s
 
-running (0m25.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m25.0s), 04/50 VUs, 6 complete and 0 interrupted iterations
 browser_capacity   [   8% ] 04/50 VUs  0m25.0s/5m15.0s
+time="2026-11-23T03:03:46Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=3 order_id=PBMWSOLTBH status=201" source=console
 
-running (0m26.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m26.0s), 04/50 VUs, 6 complete and 0 interrupted iterations
 browser_capacity   [   8% ] 04/50 VUs  0m26.0s/5m15.0s
+time="2026-11-23T03:03:47Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=2 order_id=PBMWSOLU1V status=201" source=console
 
-running (0m27.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m27.0s), 04/50 VUs, 7 complete and 0 interrupted iterations
 browser_capacity   [   9% ] 04/50 VUs  0m27.0s/5m15.0s
+time="2026-11-23T03:03:48Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=1 order_id=PBMWSOLUS9 status=201" source=console
 
-running (0m28.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m28.0s), 04/50 VUs, 8 complete and 0 interrupted iterations
 browser_capacity   [   9% ] 04/50 VUs  0m28.0s/5m15.0s
+time="2026-11-23T03:03:49Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=0 order_id=PBMWSOLVKB status=201" source=console
 
-running (0m29.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m29.0s), 04/50 VUs, 9 complete and 0 interrupted iterations
 browser_capacity   [   9% ] 04/50 VUs  0m29.0s/5m15.0s
 
-running (0m30.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+running (0m30.0s), 04/50 VUs, 10 complete and 0 interrupted iterations
 browser_capacity   [  10% ] 04/50 VUs  0m30.0s/5m15.0s
-time="2026-11-23T02:52:07Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=1 iteration=0 error=waiting for request: waiting for page request event: timed out after 20s" source=console
-time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:07Z" level=error msg="Uncaught (in promise) waiting for response: waiting for page response event: timed out after 20s" executor=ramping-vus hint="unhandled script exception" module=browser scenario=browser_capacity source=stacktrace
+time="2026-11-23T03:03:51Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=4 order_id=PBMWSOLXAI status=201" source=console
 
-running (0m31.0s), 05/50 VUs, 1 complete and 0 interrupted iterations
+running (0m31.0s), 05/50 VUs, 10 complete and 0 interrupted iterations
 browser_capacity   [  10% ] 05/50 VUs  0m31.0s/5m15.0s
+time="2026-11-23T03:03:52Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=3 order_id=PBMWSOLY03 status=201" source=console
 
-running (0m32.0s), 05/50 VUs, 1 complete and 0 interrupted iterations
+running (0m32.0s), 05/50 VUs, 11 complete and 0 interrupted iterations
 browser_capacity   [  10% ] 05/50 VUs  0m32.0s/5m15.0s
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
-time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
-time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
-time="2026-11-23T02:52:09Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=2 iteration=0 error=waiting for request: canceled" source=console
-time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
-time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:03:53Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=2 order_id=PBMWSOLYQE status=201" source=console
+
+running (0m33.0s), 05/50 VUs, 12 complete and 0 interrupted iterations
+browser_capacity   [  10% ] 05/50 VUs  0m33.0s/5m15.0s
+time="2026-11-23T03:03:54Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=1 order_id=PBMWSOLZGB status=201" source=console
+
+running (0m34.0s), 05/50 VUs, 13 complete and 0 interrupted iterations
+browser_capacity   [  11% ] 05/50 VUs  0m34.0s/5m15.0s
+time="2026-11-23T03:03:55Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=0 order_id=PBMWSOM08V status=201" source=console
+
+running (0m35.0s), 05/50 VUs, 14 complete and 0 interrupted iterations
+browser_capacity   [  11% ] 05/50 VUs  0m35.0s/5m15.0s
+time="2026-11-23T03:03:56Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=5 order_id=PBMWSOM191 status=201" source=console
+
+running (0m36.0s), 05/50 VUs, 15 complete and 0 interrupted iterations
+browser_capacity   [  11% ] 05/50 VUs  0m36.0s/5m15.0s
+time="2026-11-23T03:03:57Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=4 order_id=PBMWSOM1YH status=201" source=console
+
+running (0m37.0s), 06/50 VUs, 16 complete and 0 interrupted iterations
+browser_capacity   [  12% ] 06/50 VUs  0m37.0s/5m15.0s
+time="2026-11-23T03:03:58Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=3 order_id=PBMWSOM2OJ status=201" source=console
+
+running (0m38.0s), 06/50 VUs, 17 complete and 0 interrupted iterations
+browser_capacity   [  12% ] 06/50 VUs  0m38.0s/5m15.0s
+time="2026-11-23T03:03:59Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=2 order_id=PBMWSOM3EH status=201" source=console
+
+running (0m39.0s), 06/50 VUs, 18 complete and 0 interrupted iterations
+browser_capacity   [  12% ] 06/50 VUs  0m39.0s/5m15.0s
+time="2026-11-23T03:04:00Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=1 order_id=PBMWSOM48X status=201" source=console
+
+running (0m40.0s), 06/50 VUs, 19 complete and 0 interrupted iterations
+browser_capacity   [  13% ] 06/50 VUs  0m40.0s/5m15.0s
+time="2026-11-23T03:04:01Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=0 order_id=PBMWSOM4W6 status=201" source=console
+time="2026-11-23T03:04:01Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=6 order_id=PBMWSOM58E status=201" source=console
+
+running (0m41.0s), 06/50 VUs, 20 complete and 0 interrupted iterations
+browser_capacity   [  13% ] 06/50 VUs  0m41.0s/5m15.0s
+time="2026-11-23T03:04:02Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=5 order_id=PBMWSOM5X2 status=201" source=console
+
+running (0m42.0s), 06/50 VUs, 22 complete and 0 interrupted iterations
+browser_capacity   [  13% ] 06/50 VUs  0m42.0s/5m15.0s
+time="2026-11-23T03:04:03Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=4 order_id=PBMWSOM6PO status=201" source=console
+
+running (0m43.0s), 07/50 VUs, 23 complete and 0 interrupted iterations
+browser_capacity   [  14% ] 07/50 VUs  0m43.0s/5m15.0s
+time="2026-11-23T03:04:04Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=3 order_id=PBMWSOM7H6 status=201" source=console
+
+running (0m44.0s), 07/50 VUs, 24 complete and 0 interrupted iterations
+browser_capacity   [  14% ] 07/50 VUs  0m44.0s/5m15.0s
+time="2026-11-23T03:04:05Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=2 order_id=PBMWSOM8BD status=201" source=console
+
+running (0m45.0s), 07/50 VUs, 25 complete and 0 interrupted iterations
+browser_capacity   [  14% ] 07/50 VUs  0m45.0s/5m15.0s
+time="2026-11-23T03:04:06Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=1 order_id=PBMWSOM8VQ status=201" source=console
+time="2026-11-23T03:04:06Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=7 order_id=PBMWSOM95V status=201" source=console
+
+running (0m46.0s), 07/50 VUs, 26 complete and 0 interrupted iterations
+browser_capacity   [  15% ] 07/50 VUs  0m46.0s/5m15.0s
+time="2026-11-23T03:04:07Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=0 order_id=PBMWSOM9K7 status=201" source=console
+time="2026-11-23T03:04:07Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=6 order_id=PBMWSOM9X8 status=201" source=console
+
+running (0m47.0s), 07/50 VUs, 28 complete and 0 interrupted iterations
+browser_capacity   [  15% ] 07/50 VUs  0m47.0s/5m15.0s
+time="2026-11-23T03:04:09Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=5 order_id=PBMWSOMATN status=201" source=console
+
+running (0m48.0s), 07/50 VUs, 30 complete and 0 interrupted iterations
+browser_capacity   [  15% ] 07/50 VUs  0m48.0s/5m15.0s
+time="2026-11-23T03:04:09Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=4 order_id=PBMWSOMBJQ status=201" source=console
+
+running (0m49.0s), 08/50 VUs, 31 complete and 0 interrupted iterations
+browser_capacity   [  16% ] 08/50 VUs  0m49.0s/5m15.0s
+time="2026-11-23T03:04:11Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=3 order_id=PBMWSOMCD4 status=201" source=console
+
+running (0m50.0s), 08/50 VUs, 32 complete and 0 interrupted iterations
+browser_capacity   [  16% ] 08/50 VUs  0m50.0s/5m15.0s
+time="2026-11-23T03:04:11Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=2 order_id=PBMWSOMCZS status=201" source=console
+time="2026-11-23T03:04:12Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=8 order_id=PBMWSOMD94 status=201" source=console
+
+running (0m51.0s), 08/50 VUs, 33 complete and 0 interrupted iterations
+browser_capacity   [  16% ] 08/50 VUs  0m51.0s/5m15.0s
+time="2026-11-23T03:04:12Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=1 order_id=PBMWSOMDL6 status=201" source=console
+time="2026-11-23T03:04:13Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=7 order_id=PBMWSOMDXB status=201" source=console
+
+running (0m52.0s), 08/50 VUs, 34 complete and 0 interrupted iterations
+browser_capacity   [  17% ] 08/50 VUs  0m52.0s/5m15.0s
+time="2026-11-23T03:04:13Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=0 order_id=PBMWSOMEB4 status=201" source=console
+
+running (0m53.0s), 08/50 VUs, 36 complete and 0 interrupted iterations
+browser_capacity   [  17% ] 08/50 VUs  0m53.0s/5m15.0s
+time="2026-11-23T03:04:14Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=6 order_id=PBMWSOMEW5 status=201" source=console
+
+running (0m54.0s), 08/50 VUs, 38 complete and 0 interrupted iterations
+browser_capacity   [  17% ] 08/50 VUs  0m54.0s/5m15.0s
+time="2026-11-23T03:04:15Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=5 order_id=PBMWSOMFO0 status=201" source=console
+
+running (0m55.0s), 09/50 VUs, 39 complete and 0 interrupted iterations
+browser_capacity   [  17% ] 09/50 VUs  0m55.0s/5m15.0s
+time="2026-11-23T03:04:16Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=4 order_id=PBMWSOMGMT status=201" source=console
+time="2026-11-23T03:04:17Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=3 order_id=PBMWSOMH4W status=201" source=console
+
+running (0m56.0s), 09/50 VUs, 40 complete and 0 interrupted iterations
+browser_capacity   [  18% ] 09/50 VUs  0m56.0s/5m15.0s
+time="2026-11-23T03:04:17Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=9 order_id=PBMWSOMHFK status=201" source=console
+time="2026-11-23T03:04:18Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=2 order_id=PBMWSOMHS8 status=201" source=console
+
+running (0m57.0s), 09/50 VUs, 41 complete and 0 interrupted iterations
+browser_capacity   [  18% ] 09/50 VUs  0m57.0s/5m15.0s
+time="2026-11-23T03:04:18Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=8 order_id=PBMWSOMI3C status=201" source=console
+time="2026-11-23T03:04:18Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=1 order_id=PBMWSOMIHE status=201" source=console
+
+running (0m58.0s), 09/50 VUs, 44 complete and 0 interrupted iterations
+browser_capacity   [  18% ] 09/50 VUs  0m58.0s/5m15.0s
+time="2026-11-23T03:04:19Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=0 order_id=PBMWSOMIWL status=201" source=console
+time="2026-11-23T03:04:19Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=7 order_id=PBMWSOMJ94 status=201" source=console
+
+running (0m59.0s), 09/50 VUs, 46 complete and 0 interrupted iterations
+browser_capacity   [  19% ] 09/50 VUs  0m59.0s/5m15.0s
+time="2026-11-23T03:04:20Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=6 order_id=PBMWSOMJYZ status=201" source=console
+
+running (1m00.0s), 09/50 VUs, 48 complete and 0 interrupted iterations
+browser_capacity   [  19% ] 09/50 VUs  1m00.0s/5m15.0s
+time="2026-11-23T03:04:22Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=5 order_id=PBMWSOMKY8 status=201" source=console
+
+running (1m01.0s), 10/50 VUs, 49 complete and 0 interrupted iterations
+browser_capacity   [  19% ] 10/50 VUs  1m01.0s/5m15.0s
+time="2026-11-23T03:04:22Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=4 order_id=PBMWSOMLGP status=201" source=console
+time="2026-11-23T03:04:23Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=10 order_id=PBMWSOMLO9 status=201" source=console
+
+running (1m02.0s), 10/50 VUs, 49 complete and 0 interrupted iterations
+browser_capacity   [  20% ] 10/50 VUs  1m02.0s/5m15.0s
+time="2026-11-23T03:04:23Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=3 order_id=PBMWSOMM0O status=201" source=console
+time="2026-11-23T03:04:23Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=9 order_id=PBMWSOMMBI status=201" source=console
+
+running (1m03.0s), 10/50 VUs, 51 complete and 0 interrupted iterations
+browser_capacity   [  20% ] 10/50 VUs  1m03.0s/5m15.0s
+time="2026-11-23T03:04:24Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=2 order_id=PBMWSOMMQS status=201" source=console
+time="2026-11-23T03:04:24Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=1 order_id=PBMWSOMN4I status=201" source=console
+
+running (1m04.0s), 10/50 VUs, 54 complete and 0 interrupted iterations
+browser_capacity   [  20% ] 10/50 VUs  1m04.0s/5m15.0s
+time="2026-11-23T03:04:25Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=8 order_id=PBMWSOMNKM status=201" source=console
+time="2026-11-23T03:04:26Z" level=info msg="CAPACITY_ORDER_CREATED vu=9 iteration=0 order_id=PBMWSOMNYK status=201" source=console
+
+running (1m05.0s), 10/50 VUs, 56 complete and 0 interrupted iterations
+browser_capacity   [  21% ] 10/50 VUs  1m05.0s/5m15.0s
+time="2026-11-23T03:04:26Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=7 order_id=PBMWSOMOA8 status=201" source=console
+
+running (1m06.0s), 10/50 VUs, 58 complete and 0 interrupted iterations
+browser_capacity   [  21% ] 10/50 VUs  1m06.0s/5m15.0s
+time="2026-11-23T03:04:27Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=6 order_id=PBMWSOMP96 status=201" source=console
+
+running (1m07.0s), 11/50 VUs, 59 complete and 0 interrupted iterations
+browser_capacity   [  21% ] 11/50 VUs  1m07.0s/5m15.0s
+time="2026-11-23T03:04:28Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=5 order_id=PBMWSOMPWV status=201" source=console
+time="2026-11-23T03:04:28Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=11 order_id=PBMWSOMQ6E status=201" source=console
+time="2026-11-23T03:04:29Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=4 order_id=PBMWSOMQC2 status=201" source=console
+
+running (1m08.0s), 11/50 VUs, 60 complete and 0 interrupted iterations
+browser_capacity   [  22% ] 11/50 VUs  1m08.0s/5m15.0s
+time="2026-11-23T03:04:29Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=10 order_id=PBMWSOMQR7 status=201" source=console
+
+running (1m09.0s), 11/50 VUs, 62 complete and 0 interrupted iterations
+browser_capacity   [  22% ] 11/50 VUs  1m09.0s/5m15.0s
+time="2026-11-23T03:04:30Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=3 order_id=PBMWSOMR9H status=201" source=console
+time="2026-11-23T03:04:30Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=2 order_id=PBMWSOMROV status=201" source=console
+
+running (1m10.0s), 11/50 VUs, 64 complete and 0 interrupted iterations
+browser_capacity   [  22% ] 11/50 VUs  1m10.0s/5m15.0s
+time="2026-11-23T03:04:31Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=9 order_id=PBMWSOMRZC status=201" source=console
+time="2026-11-23T03:04:31Z" level=info msg="CAPACITY_ORDER_CREATED vu=9 iteration=1 order_id=PBMWSOMSGV status=201" source=console
+
+running (1m11.0s), 11/50 VUs, 66 complete and 0 interrupted iterations
+browser_capacity   [  23% ] 11/50 VUs  1m11.0s/5m15.0s
+time="2026-11-23T03:04:32Z" level=info msg="CAPACITY_ORDER_CREATED vu=12 iteration=0 order_id=PBMWSOMSRM status=201" source=console
+time="2026-11-23T03:04:32Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=8 order_id=PBMWSOMT1A status=201" source=console
+
+running (1m12.0s), 11/50 VUs, 68 complete and 0 interrupted iterations
+browser_capacity   [  23% ] 11/50 VUs  1m12.0s/5m15.0s
+time="2026-11-23T03:04:33Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=7 order_id=PBMWSOMTUH status=201" source=console
+
+running (1m13.0s), 12/50 VUs, 70 complete and 0 interrupted iterations
+browser_capacity   [  23% ] 12/50 VUs  1m13.0s/5m15.0s
+time="2026-11-23T03:04:34Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=6 order_id=PBMWSOMULC status=201" source=console
+time="2026-11-23T03:04:35Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=12 order_id=PBMWSOMV1A status=201" source=console
+
+running (1m14.0s), 12/50 VUs, 71 complete and 0 interrupted iterations
+browser_capacity   [  23% ] 12/50 VUs  1m14.0s/5m15.0s
+time="2026-11-23T03:04:35Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=5 order_id=PBMWSOMVCM status=201" source=console
+time="2026-11-23T03:04:36Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=11 order_id=PBMWSOMVM1 status=201" source=console
+
+running (1m15.0s), 12/50 VUs, 72 complete and 0 interrupted iterations
+browser_capacity   [  24% ] 12/50 VUs  1m15.0s/5m15.0s
+time="2026-11-23T03:04:36Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=4 order_id=PBMWSOMVXX status=201" source=console
+time="2026-11-23T03:04:37Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=3 order_id=PBMWSOMWF9 status=201" source=console
+
+running (1m16.0s), 12/50 VUs, 74 complete and 0 interrupted iterations
+browser_capacity   [  24% ] 12/50 VUs  1m16.0s/5m15.0s
+time="2026-11-23T03:04:37Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=10 order_id=PBMWSOMWVP status=201" source=console
+
+running (1m17.0s), 12/50 VUs, 76 complete and 0 interrupted iterations
+browser_capacity   [  24% ] 12/50 VUs  1m17.0s/5m15.0s
+time="2026-11-23T03:04:38Z" level=info msg="CAPACITY_ORDER_CREATED vu=11 iteration=0 order_id=PBMWSOMXE9 status=201" source=console
+time="2026-11-23T03:04:38Z" level=info msg="CAPACITY_ORDER_CREATED vu=9 iteration=2 order_id=PBMWSOMXTS status=201" source=console
+
+running (1m18.0s), 12/50 VUs, 78 complete and 0 interrupted iterations
+browser_capacity   [  25% ] 12/50 VUs  1m18.0s/5m15.0s
+time="2026-11-23T03:04:39Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=9 order_id=PBMWSOMY6H status=201" source=console
+time="2026-11-23T03:04:39Z" level=info msg="CAPACITY_ORDER_CREATED vu=12 iteration=1 order_id=PBMWSOMY6N status=201" source=console
+time="2026-11-23T03:04:39Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=8 order_id=PBMWSOMYO5 status=201" source=console
+
+running (1m19.0s), 13/50 VUs, 79 complete and 0 interrupted iterations
+browser_capacity   [  25% ] 13/50 VUs  1m19.0s/5m15.0s
+time="2026-11-23T03:04:40Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=7 order_id=PBMWSOMZDY status=201" source=console
+
+running (1m20.0s), 13/50 VUs, 82 complete and 0 interrupted iterations
+browser_capacity   [  25% ] 13/50 VUs  1m20.0s/5m15.0s
+time="2026-11-23T03:04:41Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=13 order_id=PBMWSON00O status=201" source=console
+
+running (1m21.0s), 13/50 VUs, 83 complete and 0 interrupted iterations
+browser_capacity   [  26% ] 13/50 VUs  1m21.0s/5m15.0s
+time="2026-11-23T03:04:42Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=6 order_id=PBMWSON0I4 status=201" source=console
+time="2026-11-23T03:04:42Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=12 order_id=PBMWSON0UU status=201" source=console
+
+running (1m22.0s), 13/50 VUs, 85 complete and 0 interrupted iterations
+browser_capacity   [  26% ] 13/50 VUs  1m22.0s/5m15.0s
+time="2026-11-23T03:04:43Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=5 order_id=PBMWSON1L3 status=201" source=console
+time="2026-11-23T03:04:43Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=4 order_id=PBMWSON1LF status=201" source=console
+
+running (1m23.0s), 13/50 VUs, 87 complete and 0 interrupted iterations
+browser_capacity   [  26% ] 13/50 VUs  1m23.0s/5m15.0s
+time="2026-11-23T03:04:44Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=11 order_id=PBMWSON2B5 status=201" source=console
+
+running (1m24.0s), 13/50 VUs, 89 complete and 0 interrupted iterations
+browser_capacity   [  27% ] 13/50 VUs  1m24.0s/5m15.0s
+time="2026-11-23T03:04:45Z" level=info msg="CAPACITY_ORDER_CREATED vu=14 iteration=0 order_id=PBMWSON36N status=201" source=console
+time="2026-11-23T03:04:45Z" level=info msg="CAPACITY_ORDER_CREATED vu=11 iteration=1 order_id=PBMWSON385 status=201" source=console
+
+running (1m25.0s), 14/50 VUs, 90 complete and 0 interrupted iterations
+browser_capacity   [  27% ] 14/50 VUs  1m25.0s/5m15.0s
+time="2026-11-23T03:04:46Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=10 order_id=PBMWSON3QI status=201" source=console
+time="2026-11-23T03:04:46Z" level=info msg="CAPACITY_ORDER_CREATED vu=12 iteration=2 order_id=PBMWSON3YB status=201" source=console
+
+running (1m26.0s), 14/50 VUs, 90 complete and 0 interrupted iterations
+browser_capacity   [  27% ] 14/50 VUs  1m26.0s/5m15.0s
+time="2026-11-23T03:04:47Z" level=info msg="CAPACITY_ORDER_CREATED vu=9 iteration=3 order_id=PBMWSON4GY status=201" source=console
+time="2026-11-23T03:04:47Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=9 order_id=PBMWSON4ED status=201" source=console
+time="2026-11-23T03:04:47Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=8 order_id=PBMWSON4JM status=201" source=console
+time="2026-11-23T03:04:47Z" level=error msg="process with PID 34077 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:48Z" level=error msg="process with PID 34199 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+
+running (1m27.0s), 14/50 VUs, 92 complete and 0 interrupted iterations
+browser_capacity   [  28% ] 14/50 VUs  1m27.0s/5m15.0s
+time="2026-11-23T03:04:48Z" level=error msg="process with PID 34507 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+
+running (1m28.0s), 14/50 VUs, 92 complete and 0 interrupted iterations
+browser_capacity   [  28% ] 14/50 VUs  1m28.0s/5m15.0s
+time="2026-11-23T03:04:49Z" level=error msg="process with PID 34501 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:49Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=7 order_id=PBMWSON5H6 status=201" source=console
+time="2026-11-23T03:04:50Z" level=error msg="process with PID 35014 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:50Z" level=error msg="process with PID 34771 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:50Z" level=info msg="CAPACITY_ORDER_CREATED vu=2 iteration=14 order_id=PBMWSON64V status=201" source=console
+
+running (1m29.0s), 14/50 VUs, 95 complete and 0 interrupted iterations
+browser_capacity   [  28% ] 14/50 VUs  1m29.0s/5m15.0s
+time="2026-11-23T03:04:50Z" level=error msg="process with PID 34430 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:50Z" level=info msg="CAPACITY_ORDER_CREATED vu=3 iteration=13 order_id=PBMWSON6OV status=201" source=console
+time="2026-11-23T03:04:50Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-1314280376/Default: directory not empty" category=browser elapsed="669 ms" source=browser
+time="2026-11-23T03:04:50Z" level=info msg="CAPACITY_ORDER_CREATED vu=10 iteration=5 order_id=PBMWSON6ZF status=201" source=console
+
+running (1m30.0s), 14/50 VUs, 97 complete and 0 interrupted iterations
+browser_capacity   [  29% ] 14/50 VUs  1m30.0s/5m15.0s
+
+running (1m31.0s), 15/50 VUs, 98 complete and 0 interrupted iterations
+browser_capacity   [  29% ] 15/50 VUs  1m31.0s/5m15.0s
+time="2026-11-23T03:04:52Z" level=error msg="process with PID 35317 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:52Z" level=info msg="CAPACITY_ORDER_CREATED vu=15 iteration=0 order_id=PBMWSON8FB status=201" source=console
+time="2026-11-23T03:04:52Z" level=info msg="CAPACITY_ORDER_CREATED vu=8 iteration=6 order_id=PBMWSON8OD status=201" source=console
+time="2026-11-23T03:04:53Z" level=info msg="CAPACITY_ORDER_CREATED vu=1 iteration=12 order_id=PBMWSON8UT status=201" source=console
+
+running (1m32.0s), 15/50 VUs, 99 complete and 0 interrupted iterations
+browser_capacity   [  29% ] 15/50 VUs  1m32.0s/5m15.0s
+time="2026-11-23T03:04:54Z" level=error msg="process with PID 35151 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:54Z" level=error msg="process with PID 35446 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:54Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-1375349356/Default: directory not empty" category="Browser:Close" elapsed="4 ms" source=browser
+time="2026-11-23T03:04:54Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-1613257551/Default: directory not empty" category="Browser:Close" elapsed="0 ms" source=browser
+
+running (1m33.0s), 15/50 VUs, 101 complete and 0 interrupted iterations
+browser_capacity   [  30% ] 15/50 VUs  1m33.0s/5m15.0s
+time="2026-11-23T03:04:54Z" level=info msg="CAPACITY_ORDER_CREATED vu=14 iteration=1 order_id=PBMWSON9VK status=201" source=console
+time="2026-11-23T03:04:54Z" level=error msg="process with PID 35614 unexpectedly ended: signal: killed" category=browser elapsed="310 ms" source=browser
+
+running (1m34.0s), 15/50 VUs, 101 complete and 0 interrupted iterations
+browser_capacity   [  30% ] 15/50 VUs  1m34.0s/5m15.0s
+time="2026-11-23T03:04:55Z" level=info msg="CAPACITY_ORDER_CREATED vu=11 iteration=2 order_id=PBMWSONAQ2 status=201" source=console
+time="2026-11-23T03:04:55Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-4112649312/Default: directory not empty" category="Browser:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:04:55Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-570506228/Default: directory not empty" category="Browser:Close" elapsed="0 ms" source=browser
+
+running (1m35.0s), 15/50 VUs, 103 complete and 0 interrupted iterations
+browser_capacity   [  30% ] 15/50 VUs  1m35.0s/5m15.0s
+time="2026-11-23T03:04:56Z" level=error msg="process with PID 35596 unexpectedly ended: signal: killed" category=browser elapsed="927 ms" source=browser
+time="2026-11-23T03:04:56Z" level=error msg="process with PID 35737 unexpectedly ended: signal: killed" category=browser elapsed="937 ms" source=browser
+time="2026-11-23T03:04:56Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-148258665/Default: directory not empty" category="Browser:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:04:56Z" level=error msg="process with PID 35997 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:04:57Z" level=error msg="process with PID 36195 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+
+running (1m36.0s), 15/50 VUs, 105 complete and 0 interrupted iterations
+browser_capacity   [  30% ] 15/50 VUs  1m36.0s/5m15.0s
+
+running (1m37.0s), 16/50 VUs, 106 complete and 0 interrupted iterations
+browser_capacity   [  31% ] 16/50 VUs  1m37.0s/5m15.0s
+
+running (1m38.0s), 16/50 VUs, 106 complete and 0 interrupted iterations
+browser_capacity   [  31% ] 16/50 VUs  1m38.0s/5m15.0s
+time="2026-11-23T03:04:59Z" level=error msg="process with PID 36194 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+
+running (1m39.0s), 16/50 VUs, 106 complete and 0 interrupted iterations
+browser_capacity   [  31% ] 16/50 VUs  1m39.0s/5m15.0s
+time="2026-11-23T03:05:00Z" level=info msg="CAPACITY_ORDER_CREATED vu=5 iteration=10 order_id=PBMWSONEOQ status=201" source=console
+time="2026-11-23T03:05:00Z" level=info msg="CAPACITY_ORDER_CREATED vu=12 iteration=3 order_id=PBMWSONEUQ status=201" source=console
+time="2026-11-23T03:05:01Z" level=info msg="CAPACITY_ORDER_CREATED vu=6 iteration=9 order_id=PBMWSONEX8 status=201" source=console
+time="2026-11-23T03:05:01Z" level=info msg="CAPACITY_ORDER_CREATED vu=9 iteration=4 order_id=PBMWSONEYF status=201" source=console
+
+running (1m40.0s), 16/50 VUs, 106 complete and 0 interrupted iterations
+browser_capacity   [  32% ] 16/50 VUs  1m40.0s/5m15.0s
+time="2026-11-23T03:05:01Z" level=info msg="CAPACITY_ORDER_CREATED vu=4 iteration=11 order_id=PBMWSONFCJ status=201" source=console
+
+running (1m41.0s), 16/50 VUs, 106 complete and 0 interrupted iterations
+browser_capacity   [  32% ] 16/50 VUs  1m41.0s/5m15.0s
+
+running (1m42.0s), 16/50 VUs, 107 complete and 0 interrupted iterations
+browser_capacity   [  32% ] 16/50 VUs  1m42.0s/5m15.0s
+time="2026-11-23T03:05:03Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-3103111235: directory not empty" category="Browser:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="process with PID 36553 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="process with PID 36529 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="process with PID 36400 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="process with PID 36417 unexpectedly ended: signal: killed" category=browser elapsed="155 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="process with PID 36420 unexpectedly ended: signal: killed" category=browser elapsed="0 ms" source=browser
+time="2026-11-23T03:05:03Z" level=error msg="cleaning up the user data directory: unlinkat /tmp/k6browser-data-4156591103/Default: directory not empty" category="Browser:Close" elapsed="202 ms" source=browser
+
+running (1m43.0s), 17/50 VUs, 111 complete and 0 interrupted iterations
+browser_capacity   [  33% ] 17/50 VUs  1m43.0s/5m15.0s
+time="2026-11-23T03:05:04Z" level=info msg="CAPACITY_ORDER_CREATED vu=7 iteration=8 order_id=PBMWSONHLG status=201" source=console
+
+running (1m44.0s), 17/50 VUs, 111 complete and 0 interrupted iterations
+browser_capacity   [  33% ] 17/50 VUs  1m44.0s/5m15.0s
+
+running (1m45.0s), 17/50 VUs, 112 complete and 0 interrupted iterations
+browser_capacity   [  33% ] 17/50 VUs  1m45.0s/5m15.0s
+
+running (1m46.0s), 17/50 VUs, 112 complete and 0 interrupted iterations
+browser_capacity   [  34% ] 17/50 VUs  1m46.0s/5m15.0s
+
+running (1m47.0s), 17/50 VUs, 112 complete and 0 interrupted iterations
+browser_capacity   [  34% ] 17/50 VUs  1m47.0s/5m15.0s
+time="2026-11-23T03:05:08Z" level=info msg="CAPACITY_ORDER_CREATED vu=13 iteration=0 order_id=PBMWSONKP2 status=201" source=console
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=5 iteration=11 error=navigating page: navigating frame to \"http://127.0.0.1:8080/\": navigating to \"http://127.0.0.1:8080/\": context canceled" source=console
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=10 iteration=6 error=clicking on \"header button.btn\": canceled" source=console
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="17 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="7 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="13 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="16 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="7 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="2 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="19 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="1 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="19 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="36 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="36 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="44 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="49 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="68 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="81 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="77 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="104 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+
+running (1m48.0s), 01/50 VUs, 112 complete and 16 interrupted iterations
+browser_capacity ✗ [  34% ] 10/50 VUs  1m47.8s/5m15.0s
+time="2026-11-23T03:05:09Z" level=warning msg="failed to trigger visibilitychange for web vitals: evaluating JS: context canceled" category="Page:Close" elapsed="339 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning msg="failed to dispatch keydown for web vitals: context canceled" category="Page:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
 
 
   █ THRESHOLDS 
 
     journey_success
-    ✗ 'rate>0.9' rate=0.00%
+    ✓ 'rate>0.9' rate=100.00%
 
 
   █ TOTAL RESULTS 
 
     CUSTOM
-    capacity_order_creation_failures...: 1      0.031253/s
-    journey_duration_ms................: avg=23.64s   min=23.64s  med=23.64s   max=23.64s   p(90)=23.64s   p(95)=23.64s  
-    journey_failures...................: 1      0.031253/s
-    journey_success....................: 0.00%  0 out of 1
+    capacity_orders_created.....: 113     1.045111/s
+    journey_duration_ms.........: avg=4.83s    min=3.83s    med=4.28s    max=11.7s    p(90)=6.37s    p(95)=7.85s   
+    journey_success.............: 100.00% 113 out of 113
 
     EXECUTION
-    iteration_duration.................: avg=23.64s   min=23.64s  med=23.64s   max=23.64s   p(90)=23.64s   p(95)=23.64s  
-    iterations.........................: 1      0.031253/s
-    vus................................: 5      min=0        max=5 
-    vus_max............................: 50     min=50       max=50
+    iteration_duration..........: avg=5.83s    min=4.88s    med=5.35s    max=11.29s   p(90)=7.41s    p(95)=8.64s   
+    iterations..................: 112     1.035862/s
+    vus.........................: 17      min=0          max=17
+    vus_max.....................: 50      min=50         max=50
 
     NETWORK
-    data_received......................: 0 B    0 B/s
-    data_sent..........................: 0 B    0 B/s
+    data_received...............: 0 B     0 B/s
+    data_sent...................: 0 B     0 B/s
 
     BROWSER
-    browser_data_received..............: 763 kB 24 kB/s
-    browser_data_sent..................: 47 kB  1.5 kB/s
-    browser_http_req_duration..........: avg=15.11ms  min=18µs    med=5.75ms   max=78.78ms  p(90)=41.2ms   p(95)=59.55ms 
-    browser_http_req_failed............: 0.00%  0 out of 113
+    browser_data_received.......: 16 MB   152 kB/s
+    browser_data_sent...........: 1.1 MB  9.7 kB/s
+    browser_http_req_duration...: avg=62.29ms  min=13µs     med=10.52ms  max=5.44s    p(90)=106.52ms p(95)=190.66ms
+    browser_http_req_failed.....: 0.00%   0 out of 2610
 
     WEB_VITALS
-    browser_web_vital_cls..............: avg=0.110453 min=0.02042 med=0.137773 max=0.139733 p(90)=0.139733 p(95)=0.139733
-    browser_web_vital_fcp..............: avg=100ms    min=64ms    med=96ms     max=148ms    p(90)=130.4ms  p(95)=139.19ms
-    browser_web_vital_inp..............: avg=24ms     min=24ms    med=24ms     max=24ms     p(90)=24ms     p(95)=24ms    
-    browser_web_vital_lcp..............: avg=137.6ms  min=104ms   med=140ms    max=176ms    p(90)=171.2ms  p(95)=173.6ms 
-    browser_web_vital_ttfb.............: avg=4.49ms   min=2.89ms  med=4.19ms   max=6.8ms    p(90)=6.31ms   p(95)=6.56ms  
+    browser_web_vital_cls.......: avg=0.101567 min=0        med=0.104507 max=0.139733 p(90)=0.137773 p(95)=0.139733
+    browser_web_vital_fcp.......: avg=403.13ms min=24ms     med=108ms    max=6.7s     p(90)=392ms    p(95)=2.37s   
+    browser_web_vital_inp.......: avg=48.1ms   min=0s       med=40ms     max=232ms    p(90)=92ms     p(95)=120ms   
+    browser_web_vital_lcp.......: avg=512.05ms min=52ms     med=140ms    max=7.38s    p(90)=748ms    p(95)=2.75s   
+    browser_web_vital_ttfb......: avg=43.3ms   min=899.99µs med=3.5ms    max=1.12s    p(90)=21ms     p(95)=93.55ms 
 
 
 
 
-running (0m32.0s), 00/50 VUs, 1 complete and 5 interrupted iterations
-browser_capacity ✗ [  10% ] 03/50 VUs  0m32.0s/5m15.0s
-time="2026-11-23T02:52:09Z" level=error msg="thresholds on metrics 'journey_success' were crossed; at least one has abortOnFail enabled, stopping test prematurely"
+running (1m48.1s), 00/50 VUs, 112 complete and 17 interrupted iterations
+browser_capacity ✗ [  34% ] 10/50 VUs  1m47.8s/5m15.0s
+time="2026-11-23T03:05:19Z" level=error msg="closing the browser: context deadline exceeded" category="Browser:Close" elapsed="0 ms" source=browser
+time="2026-11-23T03:05:19Z" level=error msg="test run was aborted because k6 received a 'interrupt' signal"

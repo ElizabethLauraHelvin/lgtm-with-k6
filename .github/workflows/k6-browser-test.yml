@@ -16,12 +16,44 @@ on:
           - cart
           - checkout
           - journey
+          - individual-api-capacity
         default: capacity
       target_url:
         description: "Base URL frontend Toko Coquette"
         required: true
         type: string
         default: "http://127.0.0.1:8080"
+      test_api:
+        description: "Endpoint yang diuji untuk individual API capacity"
+        required: true
+        type: choice
+        options:
+          - all
+          - login
+          - products
+          - me
+          - orders
+        default: all
+      api_max_vus:
+        description: "Maximum VUs untuk individual API capacity"
+        required: true
+        type: number
+        default: 20
+      api_vus_step:
+        description: "Kenaikan VU setiap tahap"
+        required: true
+        type: number
+        default: 5
+      api_stage_duration:
+        description: "Durasi setiap tahap, contoh 30s"
+        required: true
+        type: string
+        default: "30s"
+      include_order_write:
+        description: "Aktifkan POST /api/orders (membuat order sungguhan)"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -48,6 +80,13 @@ jobs:
       RECOVERY_TIMEOUT_MINUTES: "10"
       TEST_EMAIL: ${{ secrets.K6_TEST_EMAIL }}
       TEST_PASSWORD: ${{ secrets.K6_TEST_PASSWORD }}
+      TEST_API: ${{ inputs.test_api }}
+      API_MAX_VUS: ${{ inputs.api_max_vus }}
+      API_VUS_STEP: ${{ inputs.api_vus_step }}
+      API_STAGE_DURATION: ${{ inputs.api_stage_duration }}
+      INCLUDE_ORDER_WRITE: ${{ inputs.include_order_write }}
+      MAX_P95_MS: "500"
+      MAX_ERROR_RATE: "0.01"
 
     steps:
       - name: Checkout repository
@@ -77,12 +116,20 @@ jobs:
           test -f "k6-script-test/browser/config.js"
           test -f "k6-script-test/browser/journey.js"
           if [ "$TEST_TYPE" = "capacity" ]; then test -f "k6-script-test/browser/capacity-automated-test.js"; fi
+          if [ "$TEST_TYPE" = "individual-api-capacity" ]; then test -f "k6-script-test/api/api-capacity-test.js"; fi
           test -f "convert_k6_json_to_jtl.py"
 
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
+          if [ "$TEST_TYPE" = "individual-api-capacity" ]; then
+            test -f "generate-k6-capacity-report.py"
+            test -f "convert-k6-capacity-to-jtl.py"
+            [[ "$API_MAX_VUS" =~ ^[0-9]+$ ]] && [ "$API_MAX_VUS" -ge 1 ] && [ "$API_MAX_VUS" -le 100 ]
+            [[ "$API_VUS_STEP" =~ ^[0-9]+$ ]] && [ "$API_VUS_STEP" -ge 1 ] && [ "$API_VUS_STEP" -le "$API_MAX_VUS" ]
+          fi
+
           case "$TEST_TYPE" in
-            capacity|login|cart|checkout|journey)
+            capacity|login|cart|checkout|journey|individual-api-capacity)
               if [ -z "$TEST_EMAIL" ] || [ -z "$TEST_PASSWORD" ]; then
                 echo "::error::Skenario $TEST_TYPE memerlukan repository secrets K6_TEST_EMAIL dan K6_TEST_PASSWORD."
                 exit 1
@@ -109,6 +156,7 @@ jobs:
             cart) SCRIPT="k6-script-test/browser/cart-test.js" ;;
             checkout) SCRIPT="k6-script-test/browser/checkout-test.js" ;;
             journey) SCRIPT="k6-script-test/browser/journey-test.js" ;;
+            individual-api-capacity) SCRIPT="k6-script-test/api/api-capacity-test.js" ;;
           esac
 
           test -f "$SCRIPT"
@@ -162,6 +210,7 @@ jobs:
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
           export MAX_VUS VUS_STEP CAPACITY_VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
+          export TEST_API INCLUDE_ORDER_WRITE MAX_P95_MS MAX_ERROR_RATE
 
           K6_ARGS=()
           RAM_ABORT=false
@@ -174,7 +223,33 @@ jobs:
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
-          if [ "$TEST_TYPE" = "capacity" ]; then
+          if [ "$TEST_TYPE" = "individual-api-capacity" ]; then
+            export MAX_VUS="$API_MAX_VUS"
+            export VUS_STEP="$API_VUS_STEP"
+            MAX_VUS="$API_MAX_VUS"
+            VUS_STEP="$API_VUS_STEP"
+            STAGE_DURATION="$API_STAGE_DURATION"
+            export STAGE_DURATION="$API_STAGE_DURATION"
+            RAW="k6-browser-results/k6-api-capacity-raw.json"
+            LOG="k6-browser-results/k6-api-capacity-console.log"
+            set +e
+            k6 run \
+              --out "json=${RAW}" \
+              --tag testid="github-${GITHUB_RUN_ID}" \
+              --tag application="toko-coquette" \
+              --tag test_category="individual-api-capacity" \
+              --summary-export k6-browser-results/api-capacity-summary.json \
+              "$SCRIPT" 2>&1 | tee "$LOG"
+            K6_EXIT_CODE=${PIPESTATUS[0]}
+            set -e
+            cp "$RAW" k6-browser-results/k6-raw.json
+            python3 generate-k6-capacity-report.py \
+              "$RAW" k6-browser-results/api-capacity-report.html \
+              --max-p95-ms "$MAX_P95_MS" \
+              --max-error-rate 1.0
+            python3 convert-k6-capacity-to-jtl.py \
+              "$RAW" k6-browser-results/api-capacity.jtl
+          elif [ "$TEST_TYPE" = "capacity" ]; then
             VUS_STEP="$CAPACITY_VUS_STEP"
             export VUS_STEP
             RAW="k6-browser-results/k6-raw.json"
@@ -378,7 +453,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: toko-coquette-${{ inputs.test_type }}-jmeter-jtl-${{ github.run_number }}
+          name: toko-coquette-${{ inputs.test_type }}-performance-report-${{ github.run_number }}
           path: k6-browser-results/
           if-no-files-found: warn
           retention-days: 30
