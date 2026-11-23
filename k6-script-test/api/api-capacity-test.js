@@ -11,9 +11,16 @@ const target=(__ENV.TEST_API||'all').toLowerCase();
 const writeOrders=(__ENV.INCLUDE_ORDER_WRITE||'false').toLowerCase()==='true';
 const p95Limit=Number(__ENV.MAX_P95_MS||500);
 const errorLimit=Number(__ENV.MAX_ERROR_RATE||0.01);
+// Ramp to each VU level, then hold it for the configured duration.
 const stages=[];
-for(let v=step;v<maxVus;v+=step) stages.push({duration,target:v});
-if(!stages.length||stages[stages.length-1].target!==maxVus) stages.push({duration,target:maxVus});
+for(let v=step;v<maxVus;v+=step) {
+  stages.push({duration:'10s',target:v});
+  stages.push({duration,target:v});
+}
+if(!stages.length || stages[stages.length-1].target!==maxVus) {
+  stages.push({duration:'10s',target:maxVus});
+  stages.push({duration,target:maxVus});
+}
 stages.push({duration:'15s',target:0});
 
 export const apiSuccess=new Rate('api_success');
