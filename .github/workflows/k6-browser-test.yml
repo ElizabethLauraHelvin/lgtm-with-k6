@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: k6-browser-${{ inputs.test_type }}
+  group: k6-browser-testing
   cancel-in-progress: false
 
 jobs:
@@ -41,6 +41,8 @@ jobs:
       TEST_TYPE: ${{ inputs.test_type }}
       MAX_VUS: "50"
       VUS_STEP: "2"
+      CAPACITY_VUS_STEP: "5"
+      MIN_AVAILABLE_RAM_MB: "2048"
       STAGE_DURATION: "30s"
       FAILURE_RATE_LIMIT: "0.10"
       RECOVERY_TIMEOUT_MINUTES: "10"
@@ -69,10 +71,12 @@ jobs:
           command -v curl
           command -v node
           command -v python3
+          if [ "$TEST_TYPE" = "capacity" ]; then command -v setsid; fi
           k6 version
 
           test -f "k6-script-test/browser/config.js"
           test -f "k6-script-test/browser/journey.js"
+          if [ "$TEST_TYPE" = "capacity" ]; then test -f "k6-script-test/browser/capacity-automated-test.js"; fi
           test -f "convert_k6_json_to_jtl.py"
 
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
@@ -98,7 +102,7 @@ jobs:
           set -euo pipefail
 
           case "$TEST_TYPE" in
-            capacity) SCRIPT="k6-script-test/browser/capacity-test.js" ;;
+            capacity) SCRIPT="k6-script-test/browser/capacity-automated-test.js" ;;
             homepage) SCRIPT="k6-script-test/browser/homepage-test.js" ;;
             product) SCRIPT="k6-script-test/browser/product-test.js" ;;
             login) SCRIPT="k6-script-test/browser/login-test.js" ;;
@@ -157,68 +161,124 @@ jobs:
 
           export K6_BROWSER_HEADLESS=true
           export BASE_URL="$TARGET_URL"
-          export MAX_VUS VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
+          export MAX_VUS VUS_STEP CAPACITY_VUS_STEP STAGE_DURATION FAILURE_RATE_LIMIT TEST_EMAIL TEST_PASSWORD
 
           K6_ARGS=()
-
+          RAM_ABORT=false
           if [ "$MIMIR_ENABLED" = "true" ]; then
             export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
             export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
             export K6_PROMETHEUS_RW_TREND_STATS="avg,med,p(90),p(95),p(99),max"
             export K6_PROMETHEUS_RW_PUSH_INTERVAL="5s"
             export K6_PROMETHEUS_RW_LABELS="test_type=${TEST_TYPE},test_run=${GITHUB_RUN_ID},environment=coquette"
-
             K6_ARGS=(-o experimental-prometheus-rw)
           fi
 
-          set +e
+          if [ "$TEST_TYPE" = "capacity" ]; then
+            VUS_STEP="$CAPACITY_VUS_STEP"
+            export VUS_STEP
+            RAW="k6-browser-results/k6-raw.json"
+            LOG="k6-browser-results/k6-console.log"
+            MEMORY="k6-browser-results/host-memory.csv"
+            printf 'timestamp,mem_available_mb,action\n' > "$MEMORY"
+            K6_PID=""
+            MONITOR_PID=""
+            RAM_ABORT=false
+            RAM_OBSERVED=""
 
-          k6 run \
-            --out json=k6-browser-results/k6-raw.json \
-            "${K6_ARGS[@]}" \
-            --tag testid="github-${GITHUB_RUN_ID}" \
-            --tag application="toko-coquette" \
-            --tag test_category="browser" \
-            --summary-export k6-browser-results/capacity-summary.json \
-            "$SCRIPT" 2>&1 | tee k6-browser-results/k6-console.log
+            cleanup_capacity() {
+              if [ -n "${MONITOR_PID:-}" ]; then
+                kill "$MONITOR_PID" 2>/dev/null || true
+                wait "$MONITOR_PID" 2>/dev/null || true
+              fi
+              if [ -n "${K6_PID:-}" ] && kill -0 "$K6_PID" 2>/dev/null; then
+                kill -INT -- "-$K6_PID" 2>/dev/null || kill -INT "$K6_PID" 2>/dev/null || true
+                for _ in $(seq 1 15); do
+                  kill -0 "$K6_PID" 2>/dev/null || break
+                  sleep 1
+                done
+                if kill -0 "$K6_PID" 2>/dev/null; then
+                  kill -TERM -- "-$K6_PID" 2>/dev/null || kill -TERM "$K6_PID" 2>/dev/null || true
+                fi
+              fi
+            }
+            trap cleanup_capacity EXIT INT TERM
 
-          K6_EXIT_CODE=${PIPESTATUS[0]}
+            setsid k6 run \
+              --out "json=${RAW}" \
+              "${K6_ARGS[@]}" \
+              --tag testid="github-${GITHUB_RUN_ID}" \
+              --tag application="toko-coquette" \
+              --tag test_category="browser" \
+              --summary-export k6-browser-results/capacity-summary.json \
+              "$SCRIPT" > >(tee "$LOG") 2>&1 &
+            K6_PID=$!
+            echo "$K6_PID" > k6-browser-results/k6-process-group.pid
 
-          set -e
+            (
+              while kill -0 "$K6_PID" 2>/dev/null; do
+                NOW="$(date --iso-8601=seconds)"
+                AVAILABLE="$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)"
+                echo "$NOW,$AVAILABLE,monitor" >> "$MEMORY"
+                if (( AVAILABLE < MIN_AVAILABLE_RAM_MB )); then
+                  echo "$AVAILABLE" > k6-browser-results/abort-ram-available-mb.txt
+                  echo "$NOW" > k6-browser-results/abort-timestamp.txt
+                  echo "::warning::Available RAM ${AVAILABLE} MB is below ${MIN_AVAILABLE_RAM_MB} MB; stopping capacity test."
+                  kill -INT -- "-$K6_PID" 2>/dev/null || kill -INT "$K6_PID" 2>/dev/null || true
+                  exit 0
+                fi
+                sleep 2
+              done
+            ) &
+            MONITOR_PID=$!
+
+            wait "$K6_PID"
+            K6_EXIT_CODE=$?
+            K6_PID=""
+            kill "$MONITOR_PID" 2>/dev/null || true
+            wait "$MONITOR_PID" 2>/dev/null || true
+            MONITOR_PID=""
+            if [ -f k6-browser-results/abort-ram-available-mb.txt ]; then
+              RAM_ABORT=true
+              RAM_OBSERVED="$(cat k6-browser-results/abort-ram-available-mb.txt)"
+              # A RAM safety stop is a controlled capacity limit, not a K6 script failure.
+              K6_EXIT_CODE=0
+            fi
+            printf '{\n  "ram_guard_triggered": %s,\n  "minimum_available_ram_mb": %s,\n  "observed_available_ram_mb": %s\n}\n' \
+              "$RAM_ABORT" "$MIN_AVAILABLE_RAM_MB" "${RAM_OBSERVED:-null}" \
+              > k6-browser-results/capacity-abort.json
+          else
+            # Existing functional/performance scenarios retain their original K6 invocation.
+            set +e
+            k6 run \
+              --out json=k6-browser-results/k6-raw.json \
+              "${K6_ARGS[@]}" \
+              --tag testid="github-${GITHUB_RUN_ID}" \
+              --tag application="toko-coquette" \
+              --tag test_category="browser" \
+              --summary-export k6-browser-results/capacity-summary.json \
+              "$SCRIPT" 2>&1 | tee k6-browser-results/k6-console.log
+            K6_EXIT_CODE=${PIPESTATUS[0]}
+            set -e
+          fi
 
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
-
           FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
 
           python3 - "$TEST_TYPE" "$TARGET_URL" "$STARTED_AT" "$STARTED_MS" "$FINISHED_AT" "$FINISHED_MS" "$MAX_VUS" "$VUS_STEP" "$STAGE_DURATION" "$FAILURE_RATE_LIMIT" "$K6_EXIT_CODE" "$GITHUB_RUN_NUMBER" <<'PY'
           import json,sys
-
-          keys = [
-              "test_type", "target_url", "started_at", "started_at_ms",
-              "finished_at", "finished_at_ms", "max_vus", "vus_step",
-              "stage_duration", "failure_rate_limit", "k6_exit_code",
-              "run_number"
-          ]
-
-          vals = sys.argv[1:]
-          obj = dict(zip(keys, vals))
-
-          for k in [
-              "started_at_ms", "finished_at_ms", "max_vus",
-              "vus_step", "k6_exit_code", "run_number"
-          ]:
+          keys = ["test_type", "target_url", "started_at", "started_at_ms", "finished_at", "finished_at_ms", "max_vus", "vus_step", "stage_duration", "failure_rate_limit", "k6_exit_code", "run_number"]
+          obj = dict(zip(keys, sys.argv[1:]))
+          for k in ["started_at_ms", "finished_at_ms", "max_vus", "vus_step", "k6_exit_code", "run_number"]:
               obj[k] = int(obj[k])
-
           with open("k6-browser-results/run-metadata.json", "w") as f:
               json.dump(obj, f, indent=2)
           PY
-
           echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
-
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
           echo "load_finished_ms=$FINISHED_MS" >> "$GITHUB_OUTPUT"
-
+          echo "ram_abort=$RAM_ABORT" >> "$GITHUB_OUTPUT"
           exit 0
 
       - name: Measure homepage recovery after capacity test

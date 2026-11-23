@@ -1,14 +1,14 @@
 {
   "test_type": "checkout",
   "target_url": "http://127.0.0.1:8080",
-  "started_at": "2026-11-22T09:21:06+00:00",
-  "started_at_ms": 1795339266496,
-  "finished_at": "2026-11-22T09:25:39+00:00",
-  "finished_at_ms": 1795339539625,
+  "started_at": "2026-11-22T09:50:28+00:00",
+  "started_at_ms": 1795341028944,
+  "finished_at": "2026-11-22T09:55:06+00:00",
+  "finished_at_ms": 1795341306248,
   "max_vus": 50,
   "vus_step": 2,
   "stage_duration": "30s",
   "failure_rate_limit": "0.10",
   "k6_exit_code": 0,
-  "run_number": 36
+  "run_number": 37
 }
