@@ -10,7 +10,7 @@ import {
 } from './config.js';
 
 // Allow MAX_VUS=1 for the initial validation run.
-const maxVus = Math.max(1, Math.min(50, Number(__ENV.MAX_VUS || 50)));
+const maxVus = Math.max(1, Math.min(100, Number(__ENV.MAX_VUS || 100)));
 const step = Math.max(
   1,
   Math.min(maxVus, Number(__ENV.CAPACITY_VUS_STEP || 5))
@@ -59,9 +59,10 @@ export const options = {
   thresholds: {
     journey_success: [{
       threshold: `rate>${1 - failureRateLimit}`,
-      // Evaluate the threshold at the end instead of aborting the ramp-up.
-      // This preserves the full capacity-test result and artifacts.
-      abortOnFail: false,
+      // Stop ramping when sustained journey success falls below the target.
+      // The delay avoids aborting on a single early sample.
+      abortOnFail: true,
+      delayAbortEval: '30s',
     }],
   },
 };
@@ -242,7 +243,7 @@ export default async function () {
     orderCreationFailures.add(1);
 
     console.error(
-      `CAPACITY_FULL_CHECKOUT_FAILURE vu=${__VU} iteration=${__ITER} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
+      `CAPACITY_FULL_CHECKOUT_FAILURE timestamp_ms=${Date.now()} vu=${__VU} iteration=${__ITER} error=${String(error).replace(/\s+/g, ' ').slice(0, 500)}`
     );
 
     throw error;

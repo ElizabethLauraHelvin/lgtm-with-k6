@@ -71,7 +71,7 @@ jobs:
     env:
       TARGET_URL: ${{ inputs.target_url }}
       TEST_TYPE: ${{ inputs.test_type }}
-      MAX_VUS: "50"
+      MAX_VUS: "100"
       VUS_STEP: "2"
       CAPACITY_VUS_STEP: "5"
       MIN_AVAILABLE_RAM_MB: "2048"
@@ -118,8 +118,7 @@ jobs:
           if [ "$TEST_TYPE" = "capacity" ]; then test -f "k6-script-test/browser/capacity-automated-test.js"; fi
           if [ "$TEST_TYPE" = "individual-api-capacity" ]; then test -f "k6-script-test/api/api-capacity-test.js"; fi
           test -f "convert_k6_json_to_jtl.py"
-          test -f "generate-browser-report.js"
-          test -f "resource-monitor.py"
+          if [ "$TEST_TYPE" = "capacity" ]; then test -f "resource-monitor.py"; fi
 
           curl -fsS --max-time 15 "$TARGET_URL" -o /dev/null
 
@@ -216,15 +215,6 @@ jobs:
 
           K6_ARGS=()
           RAM_ABORT=false
-          RESOURCE_MONITOR_PID=""
-          if [ "$TEST_TYPE" = "capacity" ] || [ "$TEST_TYPE" = "individual-api-capacity" ]; then
-            python3 resource-monitor.py \
-              --output k6-browser-results/resource-monitor.csv \
-              --interval 2 &
-            RESOURCE_MONITOR_PID=$!
-            echo "$RESOURCE_MONITOR_PID" > k6-browser-results/resource-monitor.pid
-            sleep 1
-          fi
           if [ "$MIMIR_ENABLED" = "true" ]; then
             export K6_PROMETHEUS_RW_SERVER_URL="http://127.0.0.1:19009/api/v1/push"
             export K6_PROMETHEUS_RW_HTTP_HEADERS="X-Scope-OrgID:pods"
@@ -348,12 +338,6 @@ jobs:
             set -e
           fi
 
-          if [ -n "${RESOURCE_MONITOR_PID:-}" ]; then
-            kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true
-            wait "$RESOURCE_MONITOR_PID" 2>/dev/null || true
-            RESOURCE_MONITOR_PID=""
-          fi
-
           FINISHED_AT="$(date --iso-8601=seconds)"
           FINISHED_MS="$(date +%s%3N)"
           FIRST_FAILURE="$(grep -m1 'BROWSER_JOURNEY_FAILURE' k6-browser-results/k6-console.log | sed -E 's/.*timestamp_ms=([0-9]+).*/\1/' || true)"
@@ -367,18 +351,22 @@ jobs:
           with open("k6-browser-results/run-metadata.json", "w") as f:
               json.dump(obj, f, indent=2)
           PY
-          python3 - <<'PY'
+          python3 - <<'PYMETA'
           import json, os
           p = "k6-browser-results/run-metadata.json"
-          with open(p) as f: data = json.load(f)
-          data.update({
-              "max_p95_ms": float(os.getenv("MAX_P95_MS", "500")),
-              "max_error_rate_pct": float(os.getenv("MAX_ERROR_RATE", "0.01")) * 100,
-              "test_api": os.getenv("TEST_API", "all"),
-              "include_order_write": os.getenv("INCLUDE_ORDER_WRITE", "false")
-          })
-          with open(p, "w") as f: json.dump(data, f, indent=2)
-          PY
+          with open(p) as f: d = json.load(f)
+          ram = os.path.exists("k6-browser-results/abort-ram-available-mb.txt")
+          d["ram_guard_triggered"] = ram
+          d["minimum_available_ram_mb"] = int(os.getenv("MIN_AVAILABLE_RAM_MB", "2048"))
+          d["capacity_vu_safety_cap"] = int(os.getenv("MAX_VUS", "100"))
+          if ram:
+              d["capacity_stop_reason"] = "RAM safety limit reached"
+          elif int(d.get("k6_exit_code", 0)) == 99:
+              d["capacity_stop_reason"] = "Application journey threshold failed"
+          else:
+              d["capacity_stop_reason"] = "Configured VU safety cap or test completion reached"
+          with open(p, "w") as f: json.dump(d, f, indent=2)
+          PYMETA
 
           echo "$FIRST_FAILURE" > k6-browser-results/first-failure-timestamp-ms.txt
           echo "k6_exit_code=$K6_EXIT_CODE" >> "$GITHUB_OUTPUT"
@@ -470,6 +458,9 @@ jobs:
           set -euo pipefail
 
           mkdir -p k6-browser-results
+
+          cp /tmp/k6-run-metadata.json \
+            k6-browser-results/run-metadata.json 2>/dev/null || true
 
           node generate-browser-report.js k6-browser-results
 

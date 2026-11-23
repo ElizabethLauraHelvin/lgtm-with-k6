@@ -45,75 +45,6 @@ const endpointRows = [...endpointMap.entries()].map(([url, a]) => {
   return {url,count:a.length,fail,rate:a.length?fail/a.length*100:0,avg:v.length?v.reduce((x,y)=>x+y,0)/v.length:null,min:v.length?Math.min(...v):null,max:v.length?Math.max(...v):null,med:percentile(v,.5),p90:percentile(v,.9),p95:percentile(v,.95),p99:percentile(v,.99)};
 });
 
-
-// Individual API capacity: aggregate custom api_duration_ms and api_success
-// samples by endpoint and the active VU count tagged by the test script.
-const apiDurationSamples = rawSamples.filter(e => e.metric === 'api_duration_ms');
-const apiSuccessSamples = rawSamples.filter(e => e.metric === 'api_success');
-const apiGroups = new Map();
-for (const e of apiDurationSamples) {
-  const tags = e.data.tags || {};
-  const endpoint = tags.endpoint || 'unknown';
-  const vu = Number(tags.vus_level);
-  if (!Number.isFinite(vu) || vu < 1) continue;
-  const key = `${endpoint}::${vu}`;
-  if (!apiGroups.has(key)) apiGroups.set(key, {endpoint, vu, durations:[], successes:[]});
-  apiGroups.get(key).durations.push(Number(e.data.value));
-}
-for (const e of apiSuccessSamples) {
-  const tags = e.data.tags || {};
-  const endpoint = tags.endpoint || 'unknown';
-  const vu = Number(tags.vus_level);
-  if (!Number.isFinite(vu) || vu < 1) continue;
-  const key = `${endpoint}::${vu}`;
-  if (!apiGroups.has(key)) apiGroups.set(key, {endpoint, vu, durations:[], successes:[]});
-  apiGroups.get(key).successes.push(Number(e.data.value) > 0);
-}
-const apiRows = [...apiGroups.values()].map(g => {
-  const p95 = percentile(g.durations.filter(Number.isFinite), .95);
-  const count = g.successes.length;
-  const failures = g.successes.filter(x => !x).length;
-  const errorRate = count ? failures / count * 100 : null;
-  const maxErrorPct = Number(meta.max_error_rate_pct ?? 1);
-  const maxP95 = Number(meta.max_p95_ms ?? 500);
-  const pass = p95 !== null && errorRate !== null && p95 <= maxP95 && errorRate <= maxErrorPct;
-  return {...g, p95, samples:g.durations.length, failures, errorRate, pass};
-}).sort((a,b)=>a.endpoint.localeCompare(b.endpoint)||a.vu-b.vu);
-const apiEndpoints = [...new Set(apiRows.map(x=>x.endpoint))];
-const apiCapacitySummary = apiEndpoints.map(endpoint => {
-  const rows = apiRows.filter(x=>x.endpoint===endpoint);
-  const passed = rows.filter(x=>x.pass);
-  const failed = rows.filter(x=>!x.pass);
-  return {
-    endpoint,
-    highestObservedVu: rows.length ? Math.max(...rows.map(x=>x.vu)) : null,
-    maxPassingVu: passed.length ? Math.max(...passed.map(x=>x.vu)) : null,
-    firstFailingVu: failed.length ? Math.min(...failed.map(x=>x.vu)) : null,
-    rows
-  };
-});
-const apiVuRowsHtml = apiRows.length ? apiRows.map(r =>
-  `<tr><td>${esc(r.endpoint)}</td><td>${r.vu}</td><td>${r.samples}</td><td>${fmt(r.p95,' ms')}</td><td>${r.successes.length}</td><td>${r.failures}</td><td>${fmt(r.errorRate,'%')}</td><td class="${r.pass?'good':'warn'}">${r.pass?'PASS':'FAIL'}</td></tr>`
-).join('') : `<tr><td colspan="8">Belum ada api_duration_ms/api_success samples dengan tag endpoint dan vus_level. Periksa raw K6 JSON.</td></tr>`;
-const apiSummaryRowsHtml = apiCapacitySummary.length ? apiCapacitySummary.map(r =>
-  `<tr><td>${esc(r.endpoint)}</td><td>${r.highestObservedVu ?? 'N/A'}</td><td>${r.maxPassingVu ?? 'None'}</td><td>${r.firstFailingVu ?? 'Not observed'}</td><td>${r.rows.length}</td></tr>`
-).join('') : `<tr><td colspan="5">Tidak ada data kapasitas API. Pilih test_type individual-api-capacity.</td></tr>`;
-const apiChartLabels = [...new Set(apiRows.map(x=>x.vu))].sort((a,b)=>a-b);
-const apiP95Datasets = apiEndpoints.map(endpoint => ({
-  label:endpoint,
-  data:apiChartLabels.map(vu=>{const row=apiRows.find(x=>x.endpoint===endpoint&&x.vu===vu);return row?row.p95:null;}),
-  spanGaps:false, borderWidth:2
-}));
-const apiErrorDatasets = apiEndpoints.map(endpoint => ({
-  label:endpoint,
-  data:apiChartLabels.map(vu=>{const row=apiRows.find(x=>x.endpoint===endpoint&&x.vu===vu);return row?row.errorRate:null;}),
-  spanGaps:false, borderWidth:2
-}));
-const ordersWriteEnabled = String(meta.include_order_write || 'false') === 'true';
-const apiNote = ordersWriteEnabled
-  ? 'POST /api/orders aktif dan dapat membuat order sungguhan.'
-  : 'POST /api/orders tidak dijalankan karena Include Order Write = false.';
-
 // Build 10-second response-time buckets from raw K6 samples.
 const responseSeries = [];
 if (requestSamples.length) {
@@ -146,7 +77,21 @@ const durationMs = num(meta.finished_at_ms)!==null && num(meta.started_at_ms)!==
 const testType = meta.test_type || meta.scenario || 'K6 Browser';
 const status = meta.k6_exit_code === 0 || meta.k6_exit_code === '0' ? 'Completed' : (meta.k6_exit_code == null ? 'Status unavailable' : 'Failed / Aborted');
 const errors = (()=>{try{return fs.readFileSync(path.join(dir,'k6-console.log'),'utf8').split(/\r?\n/).filter(x=>/error|failed|timeout|HTTP [45]\d\d/i.test(x)).slice(0,40);}catch{return[];}})();
-const cards=[['Test status',status],['Scenario',testType],['Total HTTP samples',reqCount],['Failed HTTP requests',failedReq],['Journey success',success==null?'N/A':fmt(success*100,'%')],['Maximum VUs',pick('vus_max','max')??meta.max_vus??'N/A'],['Test duration',durationMs==null?'N/A':fmt(durationMs/1000,' s')],['HTTP throughput',reqRate==null?'N/A':fmt(reqRate,' req/s')],['APDEX',apdexScore==null?'N/A':fmt(apdexScore,'',3)]];
+const vusSamples = rawSamples.filter(e => e.metric === 'vus').map(e => ({
+  time: Date.parse(e.data.time), value: Number(e.data.value)
+})).filter(x => Number.isFinite(x.time) && Number.isFinite(x.value));
+const peakActiveVus = vusSamples.length ? Math.max(...vusSamples.map(x => x.value)) : num(pick('vus_max','max'));
+const capacityAbort = readJson('capacity-abort.json');
+const firstFailureLine = errors.find(x => x.includes('CAPACITY_FULL_CHECKOUT_FAILURE')) || '';
+const failureTimestampMatch = firstFailureLine.match(/timestamp_ms=(\d+)/);
+const failureTimestamp = failureTimestampMatch ? Number(failureTimestampMatch[1]) : null;
+const activeVusAtFirstFailure = failureTimestamp && vusSamples.length
+  ? (vusSamples.filter(x => x.time <= failureTimestamp).sort((a,b)=>b.time-a.time)[0]?.value ?? null)
+  : null;
+const stopReason = capacityAbort.ram_guard_triggered || meta.ram_guard_triggered
+  ? 'RAM safety limit reached (available RAM < 2 GB)'
+  : (Number(meta.k6_exit_code) === 99 ? 'Application journey threshold failed' : (meta.capacity_stop_reason || 'Test completed / safety cap reached'));
+const cards=[['Test status',status],['Scenario',testType],['Total HTTP samples',reqCount],['Failed HTTP requests',failedReq],['Journey success',success==null?'N/A':fmt(success*100,'%')],['Peak Active VUs',peakActiveVus??'N/A'],['Test duration',durationMs==null?'N/A':fmt(durationMs/1000,' s')],['HTTP throughput',reqRate==null?'N/A':fmt(reqRate,' req/s')],['APDEX',apdexScore==null?'N/A':fmt(apdexScore,'',3)]];
 const chart = (id,title,labels,datasets,yTitle='') => `<section class="panel"><h2>${title}</h2><div class="chart-wrap"><canvas id="${id}"></canvas></div></section>`;
 const endpointHtml=endpointRows.length?endpointRows.map(r=>`<tr><td>${esc(r.url)}</td><td>${r.count}</td><td>${r.fail}</td><td>${fmt(r.rate,'%')}</td><td>${fmt(r.avg,' ms')}</td><td>${fmt(r.min,' ms')}</td><td>${fmt(r.max,' ms')}</td><td>${fmt(r.med,' ms')}</td><td>${fmt(r.p90,' ms')}</td><td>${fmt(r.p95,' ms')}</td><td>${fmt(r.p99,' ms')}</td></tr>`).join(''):'<tr><td colspan="11">Raw K6 JSON belum berisi browser_http_req_duration/http_req_duration dengan URL tags. Statistik endpoint tidak dapat dihitung dari data ini.</td></tr>';
 const resourceKeys=[['CPU utilization','cpu_percent','%'],['Memory used','memory_used_mb','MB'],['Memory available','memory_available_mb','MB'],['Disk used','disk_used_percent','%'],['Disk read','disk_read_kbps','KB/s'],['Disk write','disk_write_kbps','KB/s'],['Network received','network_rx_kbps','KB/s'],['Network transmitted','network_tx_kbps','KB/s'],['Backend CPU','backend_cpu_cores','cores'],['Backend memory','backend_memory_mb','MB'],['Frontend CPU','frontend_cpu_cores','cores'],['Frontend memory','frontend_memory_mb','MB']];
@@ -157,7 +102,7 @@ const dataFor=key=>JSON.stringify(resource.map(r=>num(r[key])));
 const resourceCharts=resourceChartDefs.map(([id,title,key,unit])=>`<section class="panel"><h2>${title}</h2><div class="chart-wrap"><canvas id="${id}"></canvas></div></section>`).join('');
 const resourceScript=resourceChartDefs.map(([id,title,key,unit])=>{if(key==='network_rx_kbps')return `new Chart(document.getElementById('${id}'),{type:'line',data:{labels:${labelsFor(key)},datasets:[{label:'Received (KB/s)',data:${dataFor('network_rx_kbps')},borderWidth:2},{label:'Transmitted (KB/s)',data:${dataFor('network_tx_kbps')},borderWidth:2}]},options:chartOptions('${unit}')});`;return `new Chart(document.getElementById('${id}'),{type:'line',data:{labels:${labelsFor(key)},datasets:[{label:${JSON.stringify(title)},data:${dataFor(key)},borderWidth:2,pointRadius:1}]},options:chartOptions('${unit}')});`;}).join('\n');
 const responseScript=responseSeries.length?`new Chart(document.getElementById('responseChart'),{type:'line',data:{labels:${JSON.stringify(responseSeries.map(x=>x.time))},datasets:[{label:'Average (ms)',data:${JSON.stringify(responseSeries.map(x=>x.avg))},borderWidth:2},{label:'P95 (ms)',data:${JSON.stringify(responseSeries.map(x=>x.p95))},borderWidth:2}]},options:chartOptions('Milliseconds')});`:'';
-const capacityHtml=testType==='capacity'?`<section class="panel"><h2>Capacity and Recovery</h2><div class="cards"><div class="metric"><span>Configured VU limit</span><b>${esc(meta.max_vus??'N/A')}</b></div><div class="metric"><span>VU increment</span><b>${esc(meta.vus_step??'N/A')}</b></div><div class="metric"><span>Recovery status</span><b>${recovery.recovered===true?'Recovered':recovery.recovered===false?'Not confirmed':'Not recorded'}</b></div><div class="metric"><span>Recovery duration</span><b>${recovery.recovery_duration_ms==null?'N/A':fmt(recovery.recovery_duration_ms/1000,' s')}</b></div></div><p class="muted">Recovery probe hanya mengonfirmasi endpoint target yang diperiksa; bukan keseluruhan API, database, atau cluster.</p></section>`:'';
+const capacityHtml=testType==='capacity'?`<section class="panel"><h2>Capacity and Recovery</h2><div class="cards"><div class="metric"><span>Peak active VUs observed</span><b>${esc(peakActiveVus??'N/A')}</b></div><div class="metric"><span>Active VUs near first journey failure</span><b>${esc(activeVusAtFirstFailure??'N/A')}</b></div><div class="metric"><span>VU safety ceiling</span><b>${esc(meta.capacity_vu_safety_cap??meta.max_vus??100)}</b></div><div class="metric"><span>Stop reason</span><b>${esc(stopReason)}</b></div><div class="metric"><span>Recovery status</span><b>${recovery.recovered===true?'Recovered':recovery.recovered===false?'Not confirmed':'Not recorded'}</b></div><div class="metric"><span>Recovery duration</span><b>${recovery.recovery_duration_ms==null?'N/A':fmt(recovery.recovery_duration_ms/1000,' s')}</b></div></div><p class="muted">Peak active VUs adalah jumlah VU aktif tertinggi yang benar-benar tercatat, bukan configured ceiling. VU dekat failure diperkirakan dari sampel metric terdekat sebelum timestamp failure.</p><p class="muted">Recovery probe hanya mengonfirmasi endpoint target yang diperiksa; bukan keseluruhan API, database, atau cluster.</p></section>`:'';
 const conclusion=[];
 if(endpointRows.length)conclusion.push(`${endpointRows.length} endpoint terdeteksi dari raw K6 JSON, dengan ${endpointRows.reduce((a,r)=>a+r.count,0)} sampel HTTP.`);
 if(failedReq!==null)conclusion.push(`K6 summary melaporkan ${failedReq} failed HTTP request${Number(failedReq)===1?'':'s'}.`);
@@ -175,26 +120,12 @@ const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta nam
 ${responseSeries.length?`<section class="panel"><h2>Response Time Over Time</h2><div class="chart-wrap"><canvas id="responseChart"></canvas></div></section>`:''}
 ${hasResource?`<section class="panel"><h2>Infrastructure Resource Monitoring</h2><p class="muted">Sampel host dan container yang direkam selama pengujian.</p><div class="two-col">${resourceCharts}</div><h3>Resource Summary</h3><table><thead><tr><th>Resource</th><th>Latest</th><th>Peak</th><th>Average</th></tr></thead><tbody>${resourceRows}</tbody></table></section>`:`<section class="panel"><h2>Infrastructure Resource Monitoring</h2><p class="warn">Resource metrics belum tersedia. Workflow harus menghasilkan file resource-monitor.csv selama K6 berjalan agar grafik CPU, RAM, disk, network, dan Kubernetes dapat ditampilkan.</p><table><thead><tr><th>Resource</th><th>Latest</th><th>Peak</th><th>Average</th></tr></thead><tbody>${resourceRows}</tbody></table></section>`}
 ${capacityHtml}
-${testType==='individual-api-capacity'?`
-<section class="panel"><h2>Individual API Capacity by VU</h2>
-<p class="muted">PASS memakai P95 ≤ ${esc(meta.max_p95_ms??500)} ms dan error rate ≤ ${esc(meta.max_error_rate_pct??1)}%.</p>
-<h3>API Capacity Summary</h3>
-<table><thead><tr><th>API</th><th>Highest observed VU</th><th>Highest passing VU</th><th>First failing VU</th><th>Observed VU levels</th></tr></thead><tbody>${apiSummaryRowsHtml}</tbody></table>
-<h3>Per-VU Measurements</h3>
-<table><thead><tr><th>API</th><th>Active VU</th><th>Duration samples</th><th>P95</th><th>Success samples</th><th>Failures</th><th>Error rate</th><th>Status</th></tr></thead><tbody>${apiVuRowsHtml}</tbody></table>
-<p class="note">${esc(apiNote)} Highest passing VU adalah level tertinggi yang teramati dan memenuhi kriteria, bukan jaminan kapasitas di atas level yang diuji.</p>
-${apiRows.length?`<div class="two-col"><div class="chart-wrap"><canvas id="apiP95Chart"></canvas></div><div class="chart-wrap"><canvas id="apiErrorChart"></canvas></div></div>`:''}
-</section>`:''}
 <section class="panel"><h2>Errors and Failures</h2>${errors.length?`<ul>${errors.map(x=>`<li><code>${esc(x.slice(0,600))}</code></li>`).join('')}</ul>`:'<p class="good">Tidak ada error yang terdeteksi dari console log.</p>'}<p class="muted">Error log berasal dari console output; HTTP failed request dihitung terpisah dari K6 summary/raw sample.</p></section>
 <section class="panel"><h2>Test Conclusion</h2><ul>${conclusion.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p class="note">Kesimpulan ini merangkum data yang benar-benar tersedia. Status lulus/gagal terhadap SLA hanya dapat dinyatakan jika threshold performa dan resource ditetapkan secara eksplisit.</p></section>
-<section class="panel"><h2>Test Configuration & Data Sources</h2><table><tbody><tr><td>Maximum VUs</td><td>${esc(meta.max_vus)}</td></tr><tr><td>VU step</td><td>${esc(meta.vus_step)}</td></tr><tr><td>Stage duration</td><td>${esc(meta.stage_duration)}</td></tr><tr><td>Failure-rate threshold</td><td>${esc(meta.failure_rate_limit)}</td></tr><tr><td>K6 exit code</td><td>${esc(meta.k6_exit_code)}</td></tr><tr><td>Summary source</td><td>${esc(summaryFile)}</td></tr><tr><td>Raw source</td><td>${esc(rawFile||'Not found')}</td></tr><tr><td>Resource source</td><td>${esc(resourceFile||'Not found')}</td></tr></tbody></table></section>
+<section class="panel"><h2>Test Configuration & Data Sources</h2><table><tbody><tr><td>VU safety ceiling</td><td>${esc(meta.capacity_vu_safety_cap??meta.max_vus)}</td></tr><tr><td>VU step</td><td>${esc(meta.vus_step)}</td></tr><tr><td>Stage duration</td><td>${esc(meta.stage_duration)}</td></tr><tr><td>Failure-rate threshold</td><td>${esc(meta.failure_rate_limit)}</td></tr><tr><td>K6 exit code</td><td>${esc(meta.k6_exit_code)}</td></tr><tr><td>Summary source</td><td>${esc(summaryFile)}</td></tr><tr><td>Raw source</td><td>${esc(rawFile||'Not found')}</td></tr><tr><td>Resource source</td><td>${esc(resourceFile||'Not found')}</td></tr></tbody></table></section>
 </main><script>
 function chartOptions(unit){return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:!!unit,text:unit}},x:{ticks:{maxTicksLimit:12}}}}}
 ${requestSamples.length?`new Chart(document.getElementById('requestsChart'),{type:'doughnut',data:{labels:['PASS','FAIL'],datasets:[{data:[${requestPassCount},${requestSamples.length-requestPassCount}]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});`:''}
-${testType==='individual-api-capacity' && apiRows.length?`
-new Chart(document.getElementById('apiP95Chart'),{type:'line',data:{labels:${JSON.stringify(apiChartLabels)},datasets:${JSON.stringify(apiP95Datasets)}},options:chartOptions('P95 milliseconds')});
-new Chart(document.getElementById('apiErrorChart'),{type:'line',data:{labels:${JSON.stringify(apiChartLabels)},datasets:${JSON.stringify(apiErrorDatasets)}},options:chartOptions('Error rate (%)')});
-`:''}
 ${responseScript}
 ${resourceScript}
 </script></body></html>`;
