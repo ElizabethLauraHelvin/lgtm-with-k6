@@ -1,0 +1,193 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+time="2026-11-23T02:51:37Z" level=warning msg="experimental-prometheus-rw output has been deprecated and is planned for removal in k6 v3. We recommend using opentelemetry for all your metrics output."
+
+     execution: local
+        script: k6-script-test/browser/capacity-automated-test.js
+        output: json (k6-browser-results/k6-raw.json), Prometheus remote write (http://127.0.0.1:19009/api/v1/push)
+
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 5m30s max duration (incl. graceful stop):
+              * browser_capacity: Up to 50 looping VUs for 5m15s over 11 stages (gracefulRampDown: 15s, gracefulStop: 30s)
+
+
+running (0m01.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   0% ] 00/50 VUs  0m01.0s/5m15.0s
+
+running (0m02.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   1% ] 00/50 VUs  0m02.0s/5m15.0s
+
+running (0m03.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   1% ] 00/50 VUs  0m03.0s/5m15.0s
+
+running (0m04.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   1% ] 00/50 VUs  0m04.0s/5m15.0s
+
+running (0m05.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   2% ] 00/50 VUs  0m05.0s/5m15.0s
+
+running (0m06.0s), 00/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   2% ] 00/50 VUs  0m06.0s/5m15.0s
+
+running (0m07.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   2% ] 01/50 VUs  0m07.0s/5m15.0s
+
+running (0m08.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   3% ] 01/50 VUs  0m08.0s/5m15.0s
+
+running (0m09.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   3% ] 01/50 VUs  0m09.0s/5m15.0s
+
+running (0m10.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   3% ] 01/50 VUs  0m10.0s/5m15.0s
+
+running (0m11.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   3% ] 01/50 VUs  0m11.0s/5m15.0s
+
+running (0m12.0s), 01/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   4% ] 01/50 VUs  0m12.0s/5m15.0s
+
+running (0m13.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   4% ] 02/50 VUs  0m13.0s/5m15.0s
+
+running (0m14.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   4% ] 02/50 VUs  0m14.0s/5m15.0s
+
+running (0m15.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   5% ] 02/50 VUs  0m15.0s/5m15.0s
+
+running (0m16.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   5% ] 02/50 VUs  0m16.0s/5m15.0s
+
+running (0m17.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   5% ] 02/50 VUs  0m17.0s/5m15.0s
+
+running (0m18.0s), 02/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   6% ] 02/50 VUs  0m18.0s/5m15.0s
+
+running (0m19.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   6% ] 03/50 VUs  0m19.0s/5m15.0s
+
+running (0m20.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   6% ] 03/50 VUs  0m20.0s/5m15.0s
+
+running (0m21.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   7% ] 03/50 VUs  0m21.0s/5m15.0s
+
+running (0m22.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   7% ] 03/50 VUs  0m22.0s/5m15.0s
+
+running (0m23.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   7% ] 03/50 VUs  0m23.0s/5m15.0s
+
+running (0m24.0s), 03/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   8% ] 03/50 VUs  0m24.0s/5m15.0s
+
+running (0m25.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   8% ] 04/50 VUs  0m25.0s/5m15.0s
+
+running (0m26.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   8% ] 04/50 VUs  0m26.0s/5m15.0s
+
+running (0m27.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   9% ] 04/50 VUs  0m27.0s/5m15.0s
+
+running (0m28.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   9% ] 04/50 VUs  0m28.0s/5m15.0s
+
+running (0m29.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [   9% ] 04/50 VUs  0m29.0s/5m15.0s
+
+running (0m30.0s), 04/50 VUs, 0 complete and 0 interrupted iterations
+browser_capacity   [  10% ] 04/50 VUs  0m30.0s/5m15.0s
+time="2026-11-23T02:52:07Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=1 iteration=0 error=waiting for request: waiting for page request event: timed out after 20s" source=console
+time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:07Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:07Z" level=error msg="Uncaught (in promise) waiting for response: waiting for page response event: timed out after 20s" executor=ramping-vus hint="unhandled script exception" module=browser scenario=browser_capacity source=stacktrace
+
+running (0m31.0s), 05/50 VUs, 1 complete and 0 interrupted iterations
+browser_capacity   [  10% ] 05/50 VUs  0m31.0s/5m15.0s
+
+running (0m32.0s), 05/50 VUs, 1 complete and 0 interrupted iterations
+browser_capacity   [  10% ] 05/50 VUs  0m32.0s/5m15.0s
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="1 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+time="2026-11-23T02:52:09Z" level=error msg="CAPACITY_FULL_CHECKOUT_FAILURE vu=2 iteration=0 error=waiting for request: canceled" source=console
+time="2026-11-23T02:52:09Z" level=warning error="context is done before all 'IterEnd' events were processed"
+time="2026-11-23T02:52:09Z" level=warning msg="dropping metric sample: context canceled" category=pushIfNotDone elapsed="0 ms" source=browser
+
+
+  █ THRESHOLDS 
+
+    journey_success
+    ✗ 'rate>0.9' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    capacity_order_creation_failures...: 1      0.031253/s
+    journey_duration_ms................: avg=23.64s   min=23.64s  med=23.64s   max=23.64s   p(90)=23.64s   p(95)=23.64s  
+    journey_failures...................: 1      0.031253/s
+    journey_success....................: 0.00%  0 out of 1
+
+    EXECUTION
+    iteration_duration.................: avg=23.64s   min=23.64s  med=23.64s   max=23.64s   p(90)=23.64s   p(95)=23.64s  
+    iterations.........................: 1      0.031253/s
+    vus................................: 5      min=0        max=5 
+    vus_max............................: 50     min=50       max=50
+
+    NETWORK
+    data_received......................: 0 B    0 B/s
+    data_sent..........................: 0 B    0 B/s
+
+    BROWSER
+    browser_data_received..............: 763 kB 24 kB/s
+    browser_data_sent..................: 47 kB  1.5 kB/s
+    browser_http_req_duration..........: avg=15.11ms  min=18µs    med=5.75ms   max=78.78ms  p(90)=41.2ms   p(95)=59.55ms 
+    browser_http_req_failed............: 0.00%  0 out of 113
+
+    WEB_VITALS
+    browser_web_vital_cls..............: avg=0.110453 min=0.02042 med=0.137773 max=0.139733 p(90)=0.139733 p(95)=0.139733
+    browser_web_vital_fcp..............: avg=100ms    min=64ms    med=96ms     max=148ms    p(90)=130.4ms  p(95)=139.19ms
+    browser_web_vital_inp..............: avg=24ms     min=24ms    med=24ms     max=24ms     p(90)=24ms     p(95)=24ms    
+    browser_web_vital_lcp..............: avg=137.6ms  min=104ms   med=140ms    max=176ms    p(90)=171.2ms  p(95)=173.6ms 
+    browser_web_vital_ttfb.............: avg=4.49ms   min=2.89ms  med=4.19ms   max=6.8ms    p(90)=6.31ms   p(95)=6.56ms  
+
+
+
+
+running (0m32.0s), 00/50 VUs, 1 complete and 5 interrupted iterations
+browser_capacity ✗ [  10% ] 03/50 VUs  0m32.0s/5m15.0s
+time="2026-11-23T02:52:09Z" level=error msg="thresholds on metrics 'journey_success' were crossed; at least one has abortOnFail enabled, stopping test prematurely"

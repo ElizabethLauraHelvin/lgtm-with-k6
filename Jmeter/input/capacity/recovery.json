@@ -1,0 +1,12 @@
+{
+  "recovered": true,
+  "recovery_started_at_ms": 1795402331275,
+  "recovered_at_ms": 1795402341303,
+  "recovery_duration_ms": 10028,
+  "recovery_started_at": "2026-11-23T02:52:11.275000+00:00",
+  "recovered_at": "2026-11-23T02:52:21.303000+00:00",
+  "first_failure_at_ms": null,
+  "first_failure_at": null,
+  "probe_interval_seconds": 5,
+  "required_consecutive_successes": 3
+}

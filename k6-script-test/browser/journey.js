@@ -1,7 +1,5 @@
-
 import { check, sleep } from 'k6';
 import { Rate, Trend, Counter } from 'k6/metrics';
-import { exec } from 'k6/execution';
 import {
   BASE_URL,
   TEST_EMAIL,
@@ -40,7 +38,6 @@ async function login(page) {
     state: 'visible',
     timeout: 15000,
   });
-
   await loginButton.click();
 
   await page.locator(SELECTORS.email).waitFor({
@@ -58,7 +55,6 @@ async function login(page) {
   });
 
   const greeting = await page.locator(SELECTORS.loggedIn).textContent();
-
   assert(
     Boolean(greeting && greeting.trim()),
     'Login should display authenticated user'
@@ -72,39 +68,28 @@ async function browseProducts(page) {
   });
 
   assert(
-    Boolean(
-      response &&
-      response.status() >= 200 &&
-      response.status() < 400
-    ),
+    Boolean(response && response.status() >= 200 && response.status() < 400),
     'Homepage should return HTTP 2xx/3xx'
   );
 
-  await page.locator('#app .grid .card').first().waitFor({
+  await page.locator(SELECTORS.productCards).first().waitFor({
     state: 'visible',
     timeout: 20000,
   });
 
-  const count = await page.locator('#app .grid .card').count();
-
-  assert(
-    count > 0,
-    'Product listing should contain products'
-  );
+  const count = await page.locator(SELECTORS.productCards).count();
+  assert(count > 0, 'Product listing should contain products');
 
   return count;
 }
 
 async function addFirstProduct(page) {
-  const addButton = page.locator(
-    '#app .grid .card .btn'
-  ).first();
+  const addButton = page.locator(SELECTORS.addToCart).first();
 
   await addButton.waitFor({
     state: 'visible',
     timeout: 15000,
   });
-
   await addButton.click();
 
   await page.locator('#cnt').waitFor({
@@ -112,46 +97,38 @@ async function addFirstProduct(page) {
     timeout: 10000,
   });
 
-  const cartCount = Number(
-    await page.locator('#cnt').textContent()
-  );
-
-  assert(
-    cartCount > 0,
-    'Product should be added to cart'
-  );
+  const cartCount = Number(await page.locator('#cnt').textContent());
+  assert(cartCount > 0, 'Product should be added to cart');
 }
 
 async function openCart(page) {
-  await page.locator('header button.btn').click();
+  await page.locator(SELECTORS.cartOpen).click();
 
-  await page.locator('#drawer.show').waitFor({
+  await page.locator(SELECTORS.cartDrawer).waitFor({
     state: 'visible',
     timeout: 10000,
   });
 
-  await page.locator('#drawer .items .row').first().waitFor({
+  await page.locator(SELECTORS.cartItem).first().waitFor({
     state: 'visible',
     timeout: 10000,
   });
 }
 
 async function checkoutReview(page) {
-  // Open checkout modal
-  await page.locator('#drawer button.btn').click();
+  await page.locator(SELECTORS.checkoutButton).click();
 
-  await page.locator('#ov.show #modal').waitFor({
+  await page.locator(SELECTORS.checkoutModal).waitFor({
     state: 'visible',
     timeout: 10000,
   });
 
-  // Wait for checkout form
-  await page.locator('#f_s').waitFor({
+  await page.locator(SELECTORS.checkoutShipping).waitFor({
     state: 'visible',
     timeout: 10000,
   });
 
-  await page.locator('#f_p').waitFor({
+  await page.locator(SELECTORS.checkoutPayment).waitFor({
     state: 'visible',
     timeout: 10000,
   });
@@ -161,52 +138,39 @@ async function checkoutReview(page) {
     'Checkout total should be visible'
   );
 
-  // Select shipping method
-  await page.locator('#f_s').selectOption('reguler');
-
-  // Select payment method
-  await page.locator('#f_p').selectOption({
+  await page.locator(SELECTORS.checkoutShipping).selectOption('reguler');
+  await page.locator(SELECTORS.checkoutPayment).selectOption({
     label: 'QRIS',
   });
 
-  // Verify checkout form values
-  const shipping = await page.locator('#f_s').inputValue();
-  const payment = await page.locator('#f_p').inputValue();
+  const shipping = await page.locator(SELECTORS.checkoutShipping).inputValue();
+  const payment = await page.locator(SELECTORS.checkoutPayment).inputValue();
+
+  assert(shipping === 'reguler', 'Shipping method should be reguler');
+  assert(payment === 'QRIS', 'Payment method should be QRIS');
+
+  const submitButton = page.locator('#co_go');
+  await submitButton.waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
 
   assert(
-    shipping === 'reguler',
-    'Shipping method should be reguler'
+    await submitButton.isEnabled(),
+    'Checkout submit button should be enabled'
   );
 
-  assert(
-    payment === 'QRIS',
-    'Payment method should be QRIS'
-  );
-
-  
-  // Register listeners BEFORE clicking submit
-  const orderRequestPromise = page.waitForRequest(
-    '/api/orders',
-    { timeout: 20000 }
-  );
-
+  // Match the complete request URL and POST method.
+  // Register the response listener before clicking the submit button.
   const orderResponsePromise = page.waitForResponse(
-    '/api/orders',
-    { timeout: 20000 }
+    response =>
+      response.url().includes('/api/orders') &&
+      response.request().method() === 'POST',
+    { timeout: 30000 }
   );
 
-  // Submit actual order
-  await page.locator('#co_go').click();
+  await submitButton.click();
 
-  // Verify request method
-  const orderRequest = await orderRequestPromise;
-
-  assert(
-    orderRequest.method() === 'POST',
-    'Order request method should be POST'
-  );
-
-  // Verify backend response
   const orderResponse = await orderResponsePromise;
 
   assert(
@@ -228,7 +192,6 @@ async function checkoutReview(page) {
   return orderData;
 }
 
-
 export async function runJourney(
   page,
   type = 'journey',
@@ -238,20 +201,16 @@ export async function runJourney(
   let ok = false;
 
   try {
-    // Step 1: Open homepage and browse products
+    // Step 1: Open homepage and browse products.
     await browseProducts(page);
 
-    // Homepage-only scenario
     if (type === 'homepage') {
       ok = true;
       return;
     }
 
-    // Product detail scenario
     if (type === 'product') {
-      await page.locator(
-        '#app .grid .card .img'
-      ).first().click();
+      await page.locator('#app .grid .card .img').first().click();
 
       await page.locator('#ov.show #modal').waitFor({
         state: 'visible',
@@ -262,7 +221,7 @@ export async function runJourney(
       return;
     }
 
-    // Step 2: Login
+    // Step 2: Login.
     await login(page);
 
     if (type === 'login') {
@@ -270,13 +229,13 @@ export async function runJourney(
       return;
     }
 
-    // Step 3: Browse products again after login
+    // Step 3: Browse again after login.
     await browseProducts(page);
 
-    // Step 4: Add product to cart
+    // Step 4: Add product to cart.
     await addFirstProduct(page);
 
-    // Step 5: Open cart
+    // Step 5: Open cart.
     await openCart(page);
 
     if (type === 'cart') {
@@ -284,7 +243,7 @@ export async function runJourney(
       return;
     }
 
-    // Step 6: Checkout and create a real order
+    // Step 6: Complete checkout and create a real order.
     const order = await checkoutReview(page);
 
     assert(
@@ -293,7 +252,6 @@ export async function runJourney(
     );
 
     ok = true;
-
   } catch (error) {
     if (recordMetrics) {
       journeyFailures.add(1);
@@ -306,7 +264,6 @@ export async function runJourney(
     );
 
     throw error;
-
   } finally {
     if (recordMetrics) {
       journeySuccess.add(ok);
